@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Synergy 10 — Istanbul Trip Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    --ink:#1C2430;
+    --paper:#F3F0EA;
+    --surface:#FFFFFF;
+    --gold:#A9762F;
+    --gold-soft:#F1E6D2;
+    --teal:#0F6D5C;
+    --teal-soft:#DCEEE9;
+    --amber:#B3720D;
+    --amber-soft:#F6E7CC;
+    --rust:#A3402B;
+    --rust-soft:#F5DDD6;
+    --slate:#767268;
+    --slate-soft:#E9E5DC;
+    --line:#DDD7C9;
+    --line-strong:#C5BEA9;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;}
+  .disp{font-family:'Fraunces',serif;}
+  .mono{font-family:'JetBrains Mono',monospace;}
+  .wrap{max-width:1180px;margin:0 auto;padding:32px 24px 90px;}
+
+  .header{background:var(--surface);border:1px solid var(--line-strong);border-radius:10px;padding:26px 28px;margin-bottom:20px;position:relative;overflow:hidden;}
+  .header::before{content:"✈";position:absolute;top:-10px;right:20px;font-size:90px;color:var(--gold-soft);transform:rotate(20deg);}
+  .header-row{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;position:relative;z-index:1;}
+  .eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin-bottom:6px;font-weight:600;}
+  .header h1{font-size:26px;font-weight:700;margin:0 0 4px;letter-spacing:-.01em;}
+  .header .sub{font-size:13.5px;color:var(--slate);}
+  .last-updated{font-size:12px;color:var(--slate);margin-top:6px;}
+  .header-meta{display:flex;gap:24px;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px dashed var(--line-strong);position:relative;z-index:1;}
+  .m-item .k{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--slate);font-weight:600;margin-bottom:2px;}
+  .m-item .v{font-size:14px;font-weight:600;}
+
+  .btn{border-radius:6px;padding:9px 15px;font-weight:600;font-size:13px;cursor:pointer;border:1px solid transparent;white-space:nowrap;font-family:'Inter',sans-serif;}
+  .btn.primary{background:var(--ink);color:#fff;}
+  .btn.primary:hover{background:var(--gold);}
+  .btn.ghost{background:var(--surface);border-color:var(--line-strong);color:var(--slate);}
+  .btn.ghost:hover{color:var(--ink);border-color:var(--ink);}
+  .btn.small{padding:6px 11px;font-size:12px;}
+
+  body.view-only .edit-only{display:none !important;}
+  .mode-toggle{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line-strong);border-radius:999px;padding:6px 12px 6px 6px;cursor:pointer;}
+  .mode-toggle .dot{width:20px;height:20px;border-radius:50%;background:var(--slate-soft);border:1.5px solid var(--slate);flex-shrink:0;transition:background .15s,border-color .15s;}
+  .mode-toggle.on .dot{background:var(--teal);border-color:var(--teal);}
+  .mode-toggle .mode-label{font-size:12.5px;font-weight:600;color:var(--slate);white-space:nowrap;}
+  .mode-toggle.on .mode-label{color:var(--teal);}
+
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:26px;}
+  .stat{background:var(--surface);border:1px solid var(--line-strong);border-radius:8px;padding:14px 16px;}
+  .stat .n{font-size:22px;font-weight:700;line-height:1;font-family:'JetBrains Mono',monospace;}
+  .stat .l{font-size:11.5px;color:var(--slate);margin-top:5px;font-weight:500;}
+  .stat.highlight{background:var(--ink);border-color:var(--ink);}
+  .stat.highlight .n{color:var(--gold-soft);}
+  .stat.highlight .l{color:#C9C2B4;}
+
+  .urgent-banner{display:flex;align-items:center;gap:12px;background:var(--rust-soft);border:1px solid var(--rust);border-radius:8px;padding:14px 18px;margin-bottom:20px;}
+  .urgent-banner .icon{font-size:20px;flex-shrink:0;}
+  .urgent-banner .txt{font-size:13.5px;color:var(--rust);}
+  .urgent-banner .txt strong{font-weight:700;}
+
+  .travelers-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;}
+  .traveler-card{background:var(--surface);border:1px solid var(--line-strong);border-radius:8px;padding:14px 16px;cursor:pointer;transition:border-color .15s;}
+  .traveler-card:hover{border-color:var(--ink);}
+  .traveler-card.all-ready{border-color:var(--teal);}
+  .traveler-name{font-weight:700;font-size:14px;margin-bottom:8px;}
+  .pill-row{display:flex;gap:6px;}
+  .pill{flex:1;text-align:center;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:5px 4px;border-radius:5px;}
+  .pill.ok{background:var(--teal-soft);color:var(--teal);}
+  .pill.no{background:var(--slate-soft);color:var(--slate);}
+  .traveler-empty{grid-column:1/-1;text-align:center;padding:30px;color:var(--slate);font-size:13px;background:var(--surface);border:1px dashed var(--line-strong);border-radius:8px;}
+
+  .itinerary-wrap{display:flex;flex-direction:column;gap:12px;}
+  .day-card{background:var(--surface);border:1px solid var(--line-strong);border-radius:8px;overflow:hidden;}
+  .day-card-head{background:var(--ink);color:var(--gold-soft);padding:10px 16px;font-family:'Fraunces',serif;font-weight:600;font-size:14.5px;}
+  .day-card-body{padding:6px 0;}
+  .day-item{display:flex;align-items:center;gap:14px;padding:11px 16px;border-bottom:1px solid var(--line);cursor:pointer;}
+  .day-item:last-child{border-bottom:none;}
+  .day-item:hover{background:var(--paper);}
+  .day-item .dot{width:8px;height:8px;border-radius:50%;background:var(--gold);flex-shrink:0;}
+  .day-item .act{font-weight:600;font-size:13.5px;flex:1;}
+  .day-item .resp{font-size:12px;color:var(--slate);}
+
+  .section{margin-bottom:30px;}
+  .section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;}
+  .section-title{font-size:16px;font-weight:700;font-family:'Fraunces',serif;}
+  .section-sub{font-size:12px;color:var(--slate);margin-top:1px;}
+
+  .chips{display:flex;gap:8px;flex-wrap:wrap;}
+  .chip{border:1px solid var(--line-strong);background:var(--surface);color:var(--slate);font-size:12px;font-weight:600;padding:6px 12px;border-radius:999px;cursor:pointer;white-space:nowrap;}
+  .chip.active{background:var(--ink);border-color:var(--ink);color:#fff;}
+  .chip:hover:not(.active){border-color:var(--ink);color:var(--ink);}
+
+  .table-wrap{background:var(--surface);border:1px solid var(--line-strong);border-radius:8px;overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;min-width:600px;}
+  thead th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--slate);font-weight:700;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap;}
+  tbody tr{border-bottom:1px solid var(--line);cursor:pointer;}
+  tbody tr:last-child{border-bottom:none;}
+  tbody tr:hover{background:var(--paper);}
+  td{padding:10px 12px;font-size:13px;vertical-align:top;}
+  .status-tag{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:3px 8px;border-radius:3px;white-space:nowrap;}
+  .status-tag.done{background:var(--teal-soft);color:var(--teal);}
+  .status-tag.progress{background:var(--amber-soft);color:var(--amber);}
+  .status-tag.wait{background:var(--slate-soft);color:var(--slate);}
+  .date-cell{font-family:'JetBrains Mono',monospace;white-space:nowrap;font-size:12px;}
+  .empty-row td{text-align:center;padding:36px 20px;color:var(--slate);font-size:13px;}
+
+  .scrim{position:fixed;inset:0;background:rgba(28,36,48,.45);display:none;z-index:40;}
+  .scrim.open{display:block;}
+  .drawer{position:fixed;top:0;right:0;height:100%;width:460px;max-width:92vw;background:var(--surface);z-index:50;box-shadow:-8px 0 30px rgba(28,36,48,.2);transform:translateX(100%);transition:transform .2s ease;overflow-y:auto;}
+  .drawer.open{transform:translateX(0);}
+  .drawer-head{display:flex;justify-content:space-between;align-items:flex-start;padding:20px 22px 14px;border-bottom:1px solid var(--line);}
+  .drawer-head h2{font-size:16px;margin:0;font-weight:700;}
+  .close-x{background:none;border:none;font-size:20px;color:var(--slate);cursor:pointer;line-height:1;}
+  .close-x:hover{color:var(--ink);}
+  .drawer-body{padding:18px 22px 30px;}
+
+  .field{margin-bottom:13px;}
+  .field label{display:block;font-size:11px;font-weight:700;color:var(--slate);margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em;}
+  .field input, .field textarea, .field select{width:100%;border:1px solid var(--line-strong);border-radius:6px;padding:8px 10px;font-size:13.5px;font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);}
+  .field input:focus, .field textarea:focus, .field select:focus{outline:2px solid var(--gold);outline-offset:1px;}
+  .field textarea{resize:vertical;min-height:60px;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .drawer-actions{display:flex;gap:10px;margin-top:18px;padding-top:16px;border-top:1px solid var(--line);}
+  .drawer-actions .btn{flex:1;}
+  .name-check-group{display:flex;flex-wrap:wrap;gap:6px;}
+  .name-check{display:flex;align-items:center;gap:5px;border:1px solid var(--line-strong);border-radius:6px;padding:6px 10px;font-size:12.5px;cursor:pointer;background:var(--paper);}
+  .name-check input{width:auto;margin:0;}
+  .name-check:has(input:checked){background:var(--gold-soft);border-color:var(--gold);}
+  .view-item{margin-bottom:14px;}
+  .view-item .k{font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--slate);font-weight:700;margin-bottom:3px;}
+  .view-item .v{font-size:13.5px;line-height:1.6;}
+
+  @media (max-width:820px){
+    .stats{grid-template-columns:repeat(2,1fr);}
+    .row2{grid-template-columns:1fr;}
+    .header-meta{gap:14px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <div class="header-row">
+      <div>
+        <div class="eyebrow mono">Synergy Capital — 10th Anniversary</div>
+        <h1 class="disp">Istanbul Trip Tracker</h1>
+        <div class="sub" id="subLine">22–25 August 2026</div>
+        <div class="last-updated" id="lastUpdatedLine"></div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <button class="mode-toggle" id="modeToggle" title="Toggle view/edit mode">
+          <span class="dot"></span>
+          <span class="mode-label" id="modeLabel">View mode</span>
+        </button>
+        <span class="edit-only" id="editorLine" style="font-size:12px;color:var(--slate);"></span>
+      </div>
+    </div>
+    <div class="header-meta" id="headerMeta"></div>
+  </div>
+
+  <div class="stats">
+    <div class="stat highlight"><div class="n" id="statDays">—</div><div class="l">Days to departure</div></div>
+    <div class="stat"><div class="n" id="statReadiness">—</div><div class="l">Trip readiness</div></div>
+    <div class="stat"><div class="n" id="statOverdue">—</div><div class="l">Overdue tasks</div></div>
+    <div class="stat"><div class="n" id="statTravelers">—</div><div class="l">Travelers tracked</div></div>
+  </div>
+  <div id="urgentBanner" style="display:none;"></div>
+
+  <!-- TRAVELERS -->
+  <div class="section">
+    <div class="section-head">
+      <div>
+        <div class="section-title">Travelers</div>
+        <div class="section-sub">Visa, flight, and hotel status at a glance — per person</div>
+      </div>
+      <button class="btn primary edit-only small" id="addTravelerBtn">+ Add traveler</button>
+    </div>
+    <div id="travelersGrid" class="travelers-grid"></div>
+  </div>
+
+  <!-- MASTER TIMELINE -->
+  <div class="section">
+    <div class="section-head">
+      <div>
+        <div class="section-title">Master Timeline</div>
+        <div class="section-sub">Every task from planning to departure</div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <div class="chips" id="taskFilters">
+          <button class="chip active" data-filter="all">All</button>
+          <button class="chip" data-filter="open">Open</button>
+          <button class="chip" data-filter="overdue">Overdue</button>
+          <button class="chip" data-filter="done">Completed</button>
+        </div>
+        <button class="btn primary edit-only small" id="addTaskBtn">+ Add task</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Start</th><th>Target</th><th>Task</th><th>Owner</th><th>Status</th></tr></thead>
+        <tbody id="tasksTbody"><tr class="empty-row"><td colspan="5">Connecting…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- VISA TRACKER -->
+  <div class="section">
+    <div class="section-head">
+      <div>
+        <div class="section-title">Visa Tracker</div>
+        <div class="section-sub">Per-traveler visa status</div>
+      </div>
+      <button class="btn primary edit-only small" id="addVisaBtn">+ Add traveler</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Name</th><th>Nationality</th><th>Visa Required</th><th>Application</th><th>Approval</th><th>Status</th></tr></thead>
+        <tbody id="visasTbody"><tr class="empty-row"><td colspan="6">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- FLIGHT TRACKER -->
+  <div class="section">
+    <div class="section-head">
+      <div>
+        <div class="section-title">Flight Tracker</div>
+        <div class="section-sub">Departure and return details per traveler</div>
+      </div>
+      <button class="btn primary edit-only small" id="addFlightBtn">+ Add flight</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Name</th><th>Departure</th><th>Return</th><th>PNR</th><th>Seat</th></tr></thead>
+        <tbody id="flightsTbody"><tr class="empty-row"><td colspan="5">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- HOTEL TRACKER -->
+  <div class="section">
+    <div class="section-head">
+      <div>
+        <div class="section-title">Hotel Tracker</div>
+        <div class="section-sub">Rooming and confirmation details</div>
+      </div>
+      <button class="btn primary edit-only small" id="addHotelBtn">+ Add guest</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Guest</th><th>Hotel</th><th>Check-in</th><th>Check-out</th><th>Room</th><th>Confirmation</th></tr></thead>
+        <tbody id="hotelsTbody"><tr class="empty-row"><td colspan="6">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- EVENT PROGRAM -->
+  <div class="section">
+    <div class="section-head">
+      <div>
+        <div class="section-title">Istanbul Itinerary</div>
+        <div class="section-sub">Day by day, what's happening and who's running it</div>
+      </div>
+      <button class="btn primary edit-only small" id="addProgramBtn">+ Add activity</button>
+    </div>
+    <div id="programDays" class="itinerary-wrap"></div>
+  </div>
+
+</div>
+
+<div class="scrim" id="scrim"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-head">
+    <h2 id="drawerTitle">Detail</h2>
+    <button class="close-x" id="closeDrawer">&times;</button>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBrtciRujlUVgnybjYRzmoXsw3DJnUyqFU",
+  authDomain: "subscription-c5e02.firebaseapp.com",
+  projectId: "subscription-c5e02",
+  storageBucket: "subscription-c5e02.firebasestorage.app",
+  messagingSenderId: "147400627686",
+  appId: "1:147400627686:web:e223b99ae8dcad24a7b227"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+const META_DOC = db.collection('synergy10_meta').doc('project');
+const TASKS = db.collection('synergy10_tasks');
+const VISAS = db.collection('synergy10_visas');
+const FLIGHTS = db.collection('synergy10_flights');
+const HOTELS = db.collection('synergy10_hotels');
+const PROGRAM = db.collection('synergy10_program');
+const TRAVELERS = db.collection('synergy10_travelers');
+
+let seededMeta = false, seededTasks = false, seededProgram = false, ownerMigrated = false;
+
+const SEED_META = {
+  eventName: "Synergy 10 Anniversary Event",
+  location: "Istanbul, Turkey",
+  departureDate: "2026-08-22",
+  returnDate: "2026-08-25"
+};
+
+const SEED_TASKS = [
+  {id:"tk01", startDate:"2026-07-23", targetDate:"ASAP", task:"Standard Visas", owner:"Rose, Arlene, Ann", status:"Started", remarks:"VFS appointments done on 23 July 2026 & 27 July 2026"},
+  {id:"tk02", startDate:"2026-07-27", targetDate:"2026-07-31", task:"E-Visas", owner:"Rose, Arlene", status:"Not Started", remarks:""},
+  {id:"tk03", startDate:"ASAP", targetDate:"ASAP", task:"Flights Confirmation", owner:"Sheila, Rose, Arlene", status:"Quotations Received", remarks:"Waiting for approval from management, to be done after visas are approved"},
+  {id:"tk04", startDate:"ASAP", targetDate:"ASAP", task:"Hotel Confirmation", owner:"Sheila, Rose, Arlene", status:"Quotations Received", remarks:"Waiting for approval from management"},
+  {id:"tk05", startDate:"ASAP", targetDate:"ASAP", task:"Event Coordinators", owner:"Sheila, Rose, Arlene", status:"For Review", remarks:""},
+  {id:"tk06", startDate:"2026-08-03", targetDate:"2026-08-07", task:"Land Transportation (Dubai/Sharjah)", owner:"Arlene, Ann", status:"Not Started", remarks:""},
+  {id:"tk07", startDate:"2026-07-14", targetDate:"2026-07-17", task:"Momentos - Synergy 10 layout", owner:"Sheila", status:"Not Started", remarks:"Quotations are ready, for approval to proceed"},
+  {id:"tk08", startDate:"2026-07-20", targetDate:"2026-07-24", task:"Momentos approval — to proceed with production", owner:"Sheila", status:"Not Started", remarks:""},
+  {id:"tk09", startDate:"2026-08-03", targetDate:"2026-08-07", task:"Istanbul Airport Transfers", owner:"Arlene, Ann", status:"Not Started", remarks:""},
+  {id:"tk10", startDate:"2026-08-03", targetDate:"2026-08-14", task:"Travel Documents Review", owner:"Rose, Arlene, Ann", status:"Not Started", remarks:""},
+  {id:"tk11", startDate:"", targetDate:"22 Aug 2026", task:"Departure to Istanbul", owner:"Sheila, Arlene, Rose, Ann", status:"Pending", remarks:""},
+  {id:"tk12", startDate:"", targetDate:"22-25 Aug 2026", task:"Synergy 10 Anniversary Event", owner:"Sheila, Arlene, Rose, Ann", status:"Pending", remarks:""},
+  {id:"tk13", startDate:"", targetDate:"25 Aug 2026", task:"Return to Dubai", owner:"Sheila, Arlene, Rose, Ann", status:"Pending", remarks:""}
+];
+
+const SEED_PROGRAM = [
+  {id:"pg01", date:"22 Aug", activity:"Arrival and Check-in", responsible:"", remarks:""},
+  {id:"pg02", date:"22 Aug", activity:"Dinner at Bhospuros", responsible:"", remarks:""},
+  {id:"pg03", date:"23 Aug", activity:"Synergy 10 Celebration", responsible:"", remarks:""},
+  {id:"pg04", date:"24 Aug", activity:"Team Activity / Istanbul Tour", responsible:"", remarks:""},
+  {id:"pg05", date:"25 Aug", activity:"Departure", responsible:"", remarks:""}
+];
+
+let meta = null, tasks = [], visas = [], flights = [], hotels = [], program = [], travelers = [];
+let editMode = localStorage.getItem('s10_edit_mode') === 'true';
+let editorName = localStorage.getItem('s10_editor_name') || '';
+if(editMode && !editorName){
+  editMode = false;
+  localStorage.setItem('s10_edit_mode', 'false');
+}
+const EDITOR_PINS = { "Rose": "0218", "Arlene": "0221", "Ann": "0200", "Sheila": "0217", "Noushad": "1475" };
+let taskFilter = 'all';
+
+const TEAM_NAMES = ["Rose", "Arlene", "Ann", "Sheila"];
+function nameCheckboxes(fieldId, selectedStr){
+  const selected = (selectedStr||'').split(',').map(s=>s.trim()).filter(Boolean);
+  return `<div class="name-check-group" id="${fieldId}">
+    ${TEAM_NAMES.map(n=>`
+      <label class="name-check">
+        <input type="checkbox" value="${n}" ${selected.includes(n)?'checked':''}>
+        <span>${n}</span>
+      </label>`).join('')}
+  </div>`;
+}
+function getCheckedNames(fieldId){
+  return Array.from(document.querySelectorAll(`#${fieldId} input:checked`)).map(i=>i.value).join(', ');
+}
+
+function uid(prefix){ return prefix + '_' + Date.now() + '_' + Math.random().toString(36).slice(2,6); }
+function escapeHtml(str){ const d=document.createElement('div'); d.textContent = str||''; return d.innerHTML; }
+function fmtDate(v){
+  if(!v) return '—';
+  const d = new Date(v + 'T00:00:00');
+  if(isNaN(d.getTime())) return v;
+  return d.toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'});
+}
+function fmtDateTime(iso){
+  if(!iso) return null;
+  const d = new Date(iso);
+  if(isNaN(d.getTime())) return null;
+  return `${d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}, ${d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}`;
+}
+async function touchLastUpdated(){
+  try{ await META_DOC.set({lastUpdated: new Date().toISOString()}, {merge:true}); }catch(e){ console.error(e); }
+}
+function statusClass(status){
+  const s = (status||'').toLowerCase();
+  if(s.includes('complet') || s.includes('approved') || s.includes('confirmed')) return 'done';
+  if(s.includes('not started') || s.includes('pending')) return 'wait';
+  return 'progress';
+}
+const MONTHS = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+function parseFlexDate(str){
+  if(!str) return null;
+  const s = str.trim();
+  const isIso = /^\d{4}-\d{2}-\d{2}$/.test(s);
+  // Reject anything with a dash/en-dash that isn't plain ISO — that's a range like "22-25 Aug 2026", not one deadline
+  if(!isIso && /[-–—]/.test(s)) return null;
+  if(isIso){
+    const d = new Date(s + 'T00:00:00');
+    return isNaN(d.getTime()) ? null : d;
+  }
+  // "22 Aug 2026" or "22 August 2026"
+  const m = s.match(/^(\d{1,2})\s+([A-Za-z]{3,})\s+(\d{4})$/);
+  if(m){
+    const day = parseInt(m[1],10);
+    const monKey = m[2].slice(0,3).toLowerCase();
+    const year = parseInt(m[3],10);
+    if(MONTHS[monKey] !== undefined){
+      const d = new Date(year, MONTHS[monKey], day);
+      return isNaN(d.getTime()) ? null : d;
+    }
+  }
+  // Anything else (ASAP, TBC, free text) — can't confidently read as one date
+  return null;
+}
+function isOverdue(task){
+  if(statusClass(task.status) === 'done') return false;
+  const target = parseFlexDate(task.targetDate);
+  if(!target) return false;
+  const today = new Date(); today.setHours(0,0,0,0);
+  return target < today;
+}
+
+function startListeners(){
+  META_DOC.onSnapshot(async snap=>{
+    if(!snap.exists && !seededMeta){ seededMeta = true; await META_DOC.set(SEED_META); return; }
+    meta = snap.data();
+    renderHeaderMeta();
+  }, err=>console.error('meta err', err));
+
+  TASKS.onSnapshot(async snap=>{
+    if(snap.empty && !seededTasks){
+      seededTasks = true;
+      const batch = db.batch();
+      SEED_TASKS.forEach(t=>batch.set(TASKS.doc(t.id), t));
+      await batch.commit();
+      return;
+    }
+    tasks = snap.docs.map(d=>d.data());
+
+    if(!ownerMigrated){
+      ownerMigrated = true;
+      const ABBR_MAP = {RAA:"Rose", AV:"Arlene", SN:"Sheila", AAA:"Ann"};
+      const migBatch = db.batch();
+      let needsMig = false;
+      tasks.forEach(t=>{
+        if(!t.owner) return;
+        const parts = t.owner.split(',').map(p=>p.trim());
+        const mapped = parts.map(p=>ABBR_MAP[p] || p);
+        if(mapped.join(', ') !== t.owner){
+          needsMig = true;
+          migBatch.set(TASKS.doc(t.id), {...t, owner: mapped.join(', ')});
+        }
+      });
+      if(needsMig){ await migBatch.commit(); return; }
+    }
+
+    renderTasks(); renderStats();
+  }, err=>console.error('tasks err', err));
+
+  VISAS.onSnapshot(snap=>{
+    visas = snap.docs.map(d=>d.data());
+    renderVisas(); renderStats(); renderTravelers();
+  }, err=>console.error('visas err', err));
+
+  FLIGHTS.onSnapshot(snap=>{
+    flights = snap.docs.map(d=>d.data());
+    renderFlights(); renderStats(); renderTravelers();
+  }, err=>console.error('flights err', err));
+
+  HOTELS.onSnapshot(snap=>{
+    hotels = snap.docs.map(d=>d.data());
+    renderHotels(); renderStats(); renderTravelers();
+  }, err=>console.error('hotels err', err));
+
+  TRAVELERS.onSnapshot(snap=>{
+    travelers = snap.docs.map(d=>d.data());
+    renderStats(); renderTravelers();
+  }, err=>console.error('travelers err', err));
+
+  PROGRAM.onSnapshot(async snap=>{
+    if(snap.empty && !seededProgram){
+      seededProgram = true;
+      const batch = db.batch();
+      SEED_PROGRAM.forEach(p=>batch.set(PROGRAM.doc(p.id), p));
+      await batch.commit();
+      return;
+    }
+    program = snap.docs.map(d=>d.data());
+    renderProgram();
+  }, err=>console.error('program err', err));
+}
+
+function renderHeaderMeta(){
+  if(!meta) return;
+  document.getElementById('subLine').textContent = `${fmtDate(meta.departureDate)} – ${fmtDate(meta.returnDate)} · ${meta.location||''}`;
+  const lu = fmtDateTime(meta.lastUpdated);
+  document.getElementById('lastUpdatedLine').innerHTML = lu ? `Last updated: <strong>${lu}</strong>` : '';
+  document.getElementById('headerMeta').innerHTML = `
+    <div class="m-item"><div class="k">Event</div><div class="v">${escapeHtml(meta.eventName)}</div></div>
+    <div class="m-item"><div class="k">Location</div><div class="v">${escapeHtml(meta.location)}</div></div>
+    <div class="m-item"><div class="k">Departure</div><div class="v">${fmtDate(meta.departureDate)}</div></div>
+    <div class="m-item"><div class="k">Return</div><div class="v">${fmtDate(meta.returnDate)}</div></div>
+  `;
+  renderStats();
+}
+
+function travelerReadiness(name){
+  const v = visas.find(x=>x.name===name);
+  const f = flights.find(x=>x.name===name);
+  const h = hotels.find(x=>x.guest===name);
+  const visaOk = v && /approved/i.test(v.status||'');
+  const flightOk = !!(f && f.departure && f.returnFlight);
+  const hotelOk = !!(h && h.checkin && h.checkout);
+  return {v, f, h, visaOk, flightOk, hotelOk, allOk: visaOk && flightOk && hotelOk};
+}
+function getAllTravelerNames(){
+  const names = new Set();
+  travelers.forEach(t=>{ if(t.name) names.add(t.name); });
+  visas.forEach(v=>{ if(v.name) names.add(v.name); });
+  flights.forEach(f=>{ if(f.name) names.add(f.name); });
+  hotels.forEach(h=>{ if(h.guest) names.add(h.guest); });
+  return Array.from(names);
+}
+
+function renderStats(){
+  if(meta && meta.departureDate){
+    const today = new Date(); today.setHours(0,0,0,0);
+    const dep = new Date(meta.departureDate + 'T00:00:00');
+    const days = Math.round((dep - today)/86400000);
+    document.getElementById('statDays').textContent = isNaN(days) ? '—' : (days >= 0 ? days : 'Departed');
+  }
+
+  const overdueTasks = tasks.filter(isOverdue);
+  document.getElementById('statOverdue').textContent = overdueTasks.length;
+
+  const names = getAllTravelerNames();
+  document.getElementById('statTravelers').textContent = names.length;
+
+  const doneTasks = tasks.filter(t=>statusClass(t.status)==='done').length;
+  const taskScore = tasks.length ? doneTasks/tasks.length : 1;
+  const readyCount = names.filter(n=>travelerReadiness(n).allOk).length;
+  const travelerScore = names.length ? readyCount/names.length : 1;
+  const overall = tasks.length || names.length ? Math.round(((taskScore + travelerScore) / (names.length ? 2 : 1)) * 100) : 0;
+  document.getElementById('statReadiness').textContent = (tasks.length || names.length) ? overall + '%' : '—';
+
+  const banner = document.getElementById('urgentBanner');
+  if(overdueTasks.length > 0){
+    const worst = overdueTasks.sort((a,b)=>(parseFlexDate(a.targetDate)-parseFlexDate(b.targetDate)))[0];
+    banner.style.display = 'flex';
+    banner.className = 'urgent-banner';
+    banner.innerHTML = `<span class="icon">⚠</span><span class="txt">${overdueTasks.length} task${overdueTasks.length>1?'s':''} past target date — most urgent: <strong>${escapeHtml(worst.task)}</strong> (was due ${fmtDate(worst.targetDate)})</span>`;
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
+/* ---------- TASKS (Master Timeline) ---------- */
+function renderTasks(){
+  let list = tasks.slice();
+  if(taskFilter === 'done') list = list.filter(t=>statusClass(t.status)==='done');
+  if(taskFilter === 'open') list = list.filter(t=>statusClass(t.status)!=='done');
+  if(taskFilter === 'overdue') list = list.filter(isOverdue);
+  const tbody = document.getElementById('tasksTbody');
+  if(list.length===0){ tbody.innerHTML = `<tr class="empty-row"><td colspan="5">No tasks in this view.</td></tr>`; return; }
+  tbody.innerHTML = list.map(t=>`
+    <tr data-id="${t.id}">
+      <td class="date-cell">${fmtDate(t.startDate)}</td>
+      <td class="date-cell">${fmtDate(t.targetDate)}</td>
+      <td style="font-weight:600;">${escapeHtml(t.task)}</td>
+      <td>${escapeHtml(t.owner)}</td>
+      <td><span class="status-tag ${statusClass(t.status)}">${escapeHtml(t.status)}</span>${isOverdue(t) ? ` <span class="status-tag done" style="background:var(--rust-soft);color:var(--rust);">Overdue</span>` : ''}</td>
+    </tr>`).join('');
+  tbody.querySelectorAll('tr[data-id]').forEach(tr=>tr.addEventListener('click', ()=>openTaskView(tr.getAttribute('data-id'))));
+}
+function openTaskView(id){
+  const t = tasks.find(x=>x.id===id);
+  if(!t) return;
+  document.getElementById('drawerTitle').textContent = t.task;
+  document.getElementById('drawerBody').innerHTML = `
+    <div class="view-item"><div class="k">Status</div><div class="v"><span class="status-tag ${statusClass(t.status)}">${escapeHtml(t.status)}</span></div></div>
+    <div class="view-item"><div class="k">Start date</div><div class="v">${fmtDate(t.startDate)}</div></div>
+    <div class="view-item"><div class="k">Target completion</div><div class="v">${fmtDate(t.targetDate)}</div></div>
+    <div class="view-item"><div class="k">Owner</div><div class="v">${escapeHtml(t.owner)}</div></div>
+    <div class="view-item"><div class="k">Remarks</div><div class="v">${escapeHtml(t.remarks) || '—'}</div></div>
+    ${t.editedBy ? `<div class="view-item"><div class="k">Last edited</div><div class="v" style="color:var(--slate);font-size:12px;">${escapeHtml(t.editedBy)}${t.editedAt ? ` · ${fmtDateTime(t.editedAt)}` : ''}</div></div>` : ''}
+    ${editMode ? `<div class="drawer-actions">
+      <button class="btn ghost" id="editThis">Edit</button>
+      <button class="btn ghost" id="deleteThis" style="color:var(--rust);">Delete</button>
+    </div>` : ''}
+  `;
+  if(editMode){
+    document.getElementById('editThis').addEventListener('click', ()=>openTaskForm(id));
+    document.getElementById('deleteThis').addEventListener('click', async ()=>{
+      if(confirm(`Delete "${t.task}"?`)){
+        try{ await TASKS.doc(id).delete(); await touchLastUpdated(); closeDrawer(); }
+        catch(err){ alert("Couldn't delete — check your connection.\n\n"+err.message); }
+      }
+    });
+  }
+  openDrawer();
+}
+function openTaskForm(id){
+  const t = id ? tasks.find(x=>x.id===id) : null;
+  document.getElementById('drawerTitle').textContent = id ? 'Edit task' : 'Add task';
+  document.getElementById('drawerBody').innerHTML = `
+    <form id="taskForm">
+      <div class="field"><label>Task</label><input type="text" id="f_task" required></div>
+      <div class="row2">
+        <div class="field"><label>Start date</label><input type="text" id="f_start" placeholder="YYYY-MM-DD or ASAP"></div>
+        <div class="field"><label>Target completion</label><input type="text" id="f_target" placeholder="YYYY-MM-DD or ASAP"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Owner</label>${nameCheckboxes('ownerChecks', t ? t.owner : '')}</div>
+        <div class="field"><label>Status</label>
+          <select id="f_status">
+            <option>Not Started</option><option>Started</option><option>Quotations Received</option>
+            <option>For Review</option><option>Pending</option><option>Completed</option>
+          </select>
+        </div>
+      </div>
+      <div class="field"><label>Remarks</label><textarea id="f_remarks"></textarea></div>
+      <div class="drawer-actions">
+        <button type="button" class="btn ghost" id="cancelForm">Cancel</button>
+        <button type="submit" class="btn primary">Save</button>
+      </div>
+    </form>`;
+  if(t){
+    document.getElementById('f_task').value = t.task||'';
+    document.getElementById('f_start').value = t.startDate||'';
+    document.getElementById('f_target').value = t.targetDate||'';
+    document.getElementById('f_status').value = t.status||'Not Started';
+    document.getElementById('f_remarks').value = t.remarks||'';
+  }
+  document.getElementById('cancelForm').addEventListener('click', ()=>{ if(id) openTaskView(id); else closeDrawer(); });
+  document.getElementById('taskForm').addEventListener('submit', async e=>{
+    e.preventDefault();
+    const data = {
+      task: document.getElementById('f_task').value.trim(),
+      startDate: document.getElementById('f_start').value.trim(),
+      targetDate: document.getElementById('f_target').value.trim(),
+      owner: getCheckedNames('ownerChecks'),
+      status: document.getElementById('f_status').value,
+      remarks: document.getElementById('f_remarks').value.trim(),
+      editedBy: editorName || 'Unknown',
+      editedAt: new Date().toISOString(),
+    };
+    if(!data.task) return;
+    const docId = id || uid('tk');
+    try{ await TASKS.doc(docId).set({id:docId, ...data}); await touchLastUpdated(); closeDrawer(); }
+    catch(err){ alert("Couldn't save — check your connection.\n\n"+err.message); }
+  });
+  openDrawer();
+}
+
+/* ---------- TRAVELERS (readiness roster) ---------- */
+function renderTravelers(){
+  const grid = document.getElementById('travelersGrid');
+  const names = getAllTravelerNames();
+  if(names.length === 0){
+    grid.innerHTML = `<div class="traveler-empty">No travelers added yet. Click "+ Add traveler" to start tracking someone's visa, flight, and hotel status together.</div>`;
+    return;
+  }
+  grid.innerHTML = names.sort().map(name=>{
+    const r = travelerReadiness(name);
+    return `<div class="traveler-card ${r.allOk?'all-ready':''}" data-name="${escapeHtml(name)}">
+      <div class="traveler-name">${escapeHtml(name)}</div>
+      <div class="pill-row">
+        <div class="pill ${r.visaOk?'ok':'no'}">Visa</div>
+        <div class="pill ${r.flightOk?'ok':'no'}">Flight</div>
+        <div class="pill ${r.hotelOk?'ok':'no'}">Hotel</div>
+      </div>
+    </div>`;
+  }).join('');
+  grid.querySelectorAll('.traveler-card').forEach(card=>{
+    card.addEventListener('click', ()=>openTravelerView(card.getAttribute('data-name')));
+  });
+}
+
+function openTravelerView(name){
+  const r = travelerReadiness(name);
+  document.getElementById('drawerTitle').textContent = name;
+  function block(label, ok, record, fields, kind){
+    if(!record){
+      return `<div class="view-item">
+        <div class="k">${label}</div>
+        <div class="v" style="color:var(--slate);">Not added yet.</div>
+        ${editMode ? `<button type="button" class="btn ghost small" data-add-kind="${kind}" style="margin-top:6px;">+ Add ${label.toLowerCase()}</button>` : ''}
+      </div>`;
+    }
+    const rows = fields.map(([lbl,val])=>`<div style="font-size:12.5px;margin-bottom:2px;"><span style="color:var(--slate);">${lbl}:</span> ${escapeHtml(String(val||'—'))}</div>`).join('');
+    return `<div class="view-item">
+      <div class="k">${label} ${ok?'✓':''}</div>
+      <div class="v">${rows}</div>
+      ${editMode ? `<button type="button" class="btn ghost small" data-edit-kind="${kind}" style="margin-top:6px;">Edit ${label.toLowerCase()}</button>` : ''}
+    </div>`;
+  }
+  document.getElementById('drawerBody').innerHTML = `
+    ${block('Visa', r.visaOk, r.v, [['Nationality', r.v?.nationality],['Required', r.v?.visaRequired],['Status', r.v?.status],['Application', r.v?.application],['Approval', r.v?.approval]], 'visa')}
+    ${block('Flight', r.flightOk, r.f, [['Departure', r.f?.departure],['Return', r.f?.returnFlight],['PNR', r.f?.pnr],['Seat', r.f?.seat]], 'flight')}
+    ${block('Hotel', r.hotelOk, r.h, [['Hotel', r.h?.hotel],['Check-in', r.h?.checkin],['Check-out', r.h?.checkout],['Room', r.h?.room]], 'hotel')}
+    ${editMode ? `<div class="drawer-actions">
+      <button class="btn ghost" id="removeTravelerBtn" style="color:var(--rust);">Remove traveler</button>
+    </div>` : ''}
+  `;
+  if(editMode){
+    document.querySelectorAll('[data-add-kind]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const kind = btn.getAttribute('data-add-kind');
+        if(kind==='visa') openVisaForm(null, name);
+        if(kind==='flight') openFlightForm(null, name);
+        if(kind==='hotel') openHotelForm(null, name);
+      });
+    });
+    document.querySelectorAll('[data-edit-kind]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const kind = btn.getAttribute('data-edit-kind');
+        if(kind==='visa') openVisaForm(r.v.id);
+        if(kind==='flight') openFlightForm(r.f.id);
+        if(kind==='hotel') openHotelForm(r.h.id);
+      });
+    });
+    document.getElementById('removeTravelerBtn').addEventListener('click', async ()=>{
+      if(!confirm(`Remove ${name} entirely — including their visa, flight, and hotel records? This can't be undone.`)) return;
+      try{
+        const rosterEntry = travelers.find(t=>t.name===name);
+        const jobs = [];
+        if(rosterEntry) jobs.push(TRAVELERS.doc(rosterEntry.id).delete());
+        if(r.v) jobs.push(VISAS.doc(r.v.id).delete());
+        if(r.f) jobs.push(FLIGHTS.doc(r.f.id).delete());
+        if(r.h) jobs.push(HOTELS.doc(r.h.id).delete());
+        await Promise.all(jobs);
+        await touchLastUpdated();
+        closeDrawer();
+      }catch(err){
+        alert("Couldn't remove — check your connection and try again.\n\n"+err.message);
+      }
+    });
+  }
+  openDrawer();
+}
+
+function openAddTravelerForm(){
+  document.getElementById('drawerTitle').textContent = 'Add traveler';
+  document.getElementById('drawerBody').innerHTML = `
+    <form id="genForm">
+      <div class="field"><label>Name</label><input type="text" id="f_name" required></div>
+      <div class="drawer-actions">
+        <button type="button" class="btn ghost" id="cancelForm">Cancel</button>
+        <button type="submit" class="btn primary">Add</button>
+      </div>
+    </form>`;
+  document.getElementById('cancelForm').addEventListener('click', closeDrawer);
+  document.getElementById('genForm').addEventListener('submit', async e=>{
+    e.preventDefault();
+    const name = document.getElementById('f_name').value.trim();
+    if(!name) return;
+    if(getAllTravelerNames().some(n=>n.toLowerCase()===name.toLowerCase())){
+      alert(`${name} is already tracked.`);
+      return;
+    }
+    const docId = uid('tv');
+    try{ await TRAVELERS.doc(docId).set({id:docId, name}); await touchLastUpdated(); closeDrawer(); }
+    catch(err){ alert("Couldn't add traveler — check your connection.\n\n"+err.message); }
+  });
+  openDrawer();
+}
+
+/* ---------- VISAS ---------- */
+function renderVisas(){
+  const tbody = document.getElementById('visasTbody');
+  if(visas.length===0){ tbody.innerHTML = `<tr class="empty-row"><td colspan="6">No travelers added yet.</td></tr>`; return; }
+  tbody.innerHTML = visas.map(v=>`
+    <tr data-id="${v.id}">
+      <td style="font-weight:600;">${escapeHtml(v.name)}</td>
+      <td>${escapeHtml(v.nationality)}</td>
+      <td>${escapeHtml(v.visaRequired)}</td>
+      <td class="date-cell">${fmtDate(v.application)}</td>
+      <td class="date-cell">${fmtDate(v.approval)}</td>
+      <td><span class="status-tag ${statusClass(v.status)}">${escapeHtml(v.status)||'—'}</span></td>
+    </tr>`).join('');
+  tbody.querySelectorAll('tr[data-id]').forEach(tr=>tr.addEventListener('click', ()=>openGenericView('visa', tr.getAttribute('data-id'))));
+}
+function openVisaForm(id, prefillName){
+  const v = id ? visas.find(x=>x.id===id) : null;
+  document.getElementById('drawerTitle').textContent = id ? 'Edit traveler' : 'Add traveler';
+  document.getElementById('drawerBody').innerHTML = `
+    <form id="genForm">
+      <div class="field"><label>Name</label><input type="text" id="f_name" required></div>
+      <div class="row2">
+        <div class="field"><label>Nationality</label><input type="text" id="f_nat"></div>
+        <div class="field"><label>Visa required</label><input type="text" id="f_req" placeholder="e.g. Yes / No"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Application date</label><input type="text" id="f_app" placeholder="YYYY-MM-DD"></div>
+        <div class="field"><label>Approval date</label><input type="text" id="f_appr" placeholder="YYYY-MM-DD"></div>
+      </div>
+      <div class="field"><label>Status</label>
+        <select id="f_status2">
+          <option>Not Started</option><option>Started</option><option>Submitted</option><option>Approved</option><option>Rejected</option>
+        </select>
+      </div>
+      <div class="field"><label>Remarks</label><textarea id="f_rem"></textarea></div>
+      <div class="drawer-actions">
+        <button type="button" class="btn ghost" id="cancelForm">Cancel</button>
+        <button type="submit" class="btn primary">Save</button>
+      </div>
+    </form>`;
+  if(v){
+    document.getElementById('f_name').value=v.name||'';
+    document.getElementById('f_nat').value=v.nationality||'';
+    document.getElementById('f_req').value=v.visaRequired||'';
+    document.getElementById('f_app').value=v.application||'';
+    document.getElementById('f_appr').value=v.approval||'';
+    document.getElementById('f_status2').value=v.status||'Not Started';
+    document.getElementById('f_rem').value=v.remarks||'';
+  } else if(prefillName){
+    document.getElementById('f_name').value = prefillName;
+  }
+  document.getElementById('cancelForm').addEventListener('click', closeDrawer);
+  document.getElementById('genForm').addEventListener('submit', async e=>{
+    e.preventDefault();
+    const data = {
+      name: document.getElementById('f_name').value.trim(),
+      nationality: document.getElementById('f_nat').value.trim(),
+      visaRequired: document.getElementById('f_req').value.trim(),
+      application: document.getElementById('f_app').value.trim(),
+      approval: document.getElementById('f_appr').value.trim(),
+      status: document.getElementById('f_status2').value,
+      remarks: document.getElementById('f_rem').value.trim(),
+      editedBy: editorName || 'Unknown',
+      editedAt: new Date().toISOString(),
+    };
+    if(!data.name) return;
+    const docId = id || uid('vs');
+    try{ await VISAS.doc(docId).set({id:docId, ...data}); await touchLastUpdated(); closeDrawer(); }
+    catch(err){ alert("Couldn't save — check your connection.\n\n"+err.message); }
+  });
+  openDrawer();
+}
+
+/* ---------- FLIGHTS ---------- */
+function renderFlights(){
+  const tbody = document.getElementById('flightsTbody');
+  if(flights.length===0){ tbody.innerHTML = `<tr class="empty-row"><td colspan="5">No flights added yet.</td></tr>`; return; }
+  tbody.innerHTML = flights.map(f=>`
+    <tr data-id="${f.id}">
+      <td style="font-weight:600;">${escapeHtml(f.name)}</td>
+      <td class="date-cell">${escapeHtml(f.departure)}</td>
+      <td class="date-cell">${escapeHtml(f.returnFlight)}</td>
+      <td class="mono">${escapeHtml(f.pnr)}</td>
+      <td>${escapeHtml(f.seat)}</td>
+    </tr>`).join('');
+  tbody.querySelectorAll('tr[data-id]').forEach(tr=>tr.addEventListener('click', ()=>openGenericView('flight', tr.getAttribute('data-id'))));
+}
+function openFlightForm(id, prefillName){
+  const f = id ? flights.find(x=>x.id===id) : null;
+  document.getElementById('drawerTitle').textContent = id ? 'Edit flight' : 'Add flight';
+  document.getElementById('drawerBody').innerHTML = `
+    <form id="genForm">
+      <div class="field"><label>Name</label><input type="text" id="f_name" required></div>
+      <div class="row2">
+        <div class="field"><label>Departure</label><input type="text" id="f_dep" placeholder="Flight no. / date / time"></div>
+        <div class="field"><label>Return</label><input type="text" id="f_ret" placeholder="Flight no. / date / time"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>PNR</label><input type="text" id="f_pnr"></div>
+        <div class="field"><label>Seat</label><input type="text" id="f_seat"></div>
+      </div>
+      <div class="field"><label>Remarks</label><textarea id="f_rem"></textarea></div>
+      <div class="drawer-actions">
+        <button type="button" class="btn ghost" id="cancelForm">Cancel</button>
+        <button type="submit" class="btn primary">Save</button>
+      </div>
+    </form>`;
+  if(f){
+    document.getElementById('f_name').value=f.name||'';
+    document.getElementById('f_dep').value=f.departure||'';
+    document.getElementById('f_ret').value=f.returnFlight||'';
+    document.getElementById('f_pnr').value=f.pnr||'';
+    document.getElementById('f_seat').value=f.seat||'';
+    document.getElementById('f_rem').value=f.remarks||'';
+  } else if(prefillName){
+    document.getElementById('f_name').value = prefillName;
+  }
+  document.getElementById('cancelForm').addEventListener('click', closeDrawer);
+  document.getElementById('genForm').addEventListener('submit', async e=>{
+    e.preventDefault();
+    const data = {
+      name: document.getElementById('f_name').value.trim(),
+      departure: document.getElementById('f_dep').value.trim(),
+      returnFlight: document.getElementById('f_ret').value.trim(),
+      pnr: document.getElementById('f_pnr').value.trim(),
+      seat: document.getElementById('f_seat').value.trim(),
+      remarks: document.getElementById('f_rem').value.trim(),
+      editedBy: editorName || 'Unknown',
+      editedAt: new Date().toISOString(),
+    };
+    if(!data.name) return;
+    const docId = id || uid('fl');
+    try{ await FLIGHTS.doc(docId).set({id:docId, ...data}); await touchLastUpdated(); closeDrawer(); }
+    catch(err){ alert("Couldn't save — check your connection.\n\n"+err.message); }
+  });
+  openDrawer();
+}
+
+/* ---------- HOTELS ---------- */
+function renderHotels(){
+  const tbody = document.getElementById('hotelsTbody');
+  if(hotels.length===0){ tbody.innerHTML = `<tr class="empty-row"><td colspan="6">No guests added yet.</td></tr>`; return; }
+  tbody.innerHTML = hotels.map(h=>`
+    <tr data-id="${h.id}">
+      <td style="font-weight:600;">${escapeHtml(h.guest)}</td>
+      <td>${escapeHtml(h.hotel)}</td>
+      <td class="date-cell">${escapeHtml(h.checkin)}</td>
+      <td class="date-cell">${escapeHtml(h.checkout)}</td>
+      <td>${escapeHtml(h.room)}</td>
+      <td class="mono">${escapeHtml(h.confirmation)}</td>
+    </tr>`).join('');
+  tbody.querySelectorAll('tr[data-id]').forEach(tr=>tr.addEventListener('click', ()=>openGenericView('hotel', tr.getAttribute('data-id'))));
+}
+function openHotelForm(id, prefillName){
+  const h = id ? hotels.find(x=>x.id===id) : null;
+  document.getElementById('drawerTitle').textContent = id ? 'Edit guest' : 'Add guest';
+  document.getElementById('drawerBody').innerHTML = `
+    <form id="genForm">
+      <div class="field"><label>Guest</label><input type="text" id="f_guest" required></div>
+      <div class="field"><label>Hotel</label><input type="text" id="f_hotel"></div>
+      <div class="row2">
+        <div class="field"><label>Check-in</label><input type="text" id="f_ci" placeholder="YYYY-MM-DD"></div>
+        <div class="field"><label>Check-out</label><input type="text" id="f_co" placeholder="YYYY-MM-DD"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Room</label><input type="text" id="f_room"></div>
+        <div class="field"><label>Confirmation</label><input type="text" id="f_conf"></div>
+      </div>
+      <div class="field"><label>Remarks</label><textarea id="f_rem"></textarea></div>
+      <div class="drawer-actions">
+        <button type="button" class="btn ghost" id="cancelForm">Cancel</button>
+        <button type="submit" class="btn primary">Save</button>
+      </div>
+    </form>`;
+  if(h){
+    document.getElementById('f_guest').value=h.guest||'';
+    document.getElementById('f_hotel').value=h.hotel||'';
+    document.getElementById('f_ci').value=h.checkin||'';
+    document.getElementById('f_co').value=h.checkout||'';
+    document.getElementById('f_room').value=h.room||'';
+    document.getElementById('f_conf').value=h.confirmation||'';
+    document.getElementById('f_rem').value=h.remarks||'';
+  } else if(prefillName){
+    document.getElementById('f_guest').value = prefillName;
+  }
+  document.getElementById('cancelForm').addEventListener('click', closeDrawer);
+  document.getElementById('genForm').addEventListener('submit', async e=>{
+    e.preventDefault();
+    const data = {
+      guest: document.getElementById('f_guest').value.trim(),
+      hotel: document.getElementById('f_hotel').value.trim(),
+      checkin: document.getElementById('f_ci').value.trim(),
+      checkout: document.getElementById('f_co').value.trim(),
+      room: document.getElementById('f_room').value.trim(),
+      confirmation: document.getElementById('f_conf').value.trim(),
+      remarks: document.getElementById('f_rem').value.trim(),
+      editedBy: editorName || 'Unknown',
+      editedAt: new Date().toISOString(),
+    };
+    if(!data.guest) return;
+    const docId = id || uid('ht');
+    try{ await HOTELS.doc(docId).set({id:docId, ...data}); await touchLastUpdated(); closeDrawer(); }
+    catch(err){ alert("Couldn't save — check your connection.\n\n"+err.message); }
+  });
+  openDrawer();
+}
+
+/* ---------- EVENT PROGRAM ---------- */
+function renderProgram(){
+  const wrap = document.getElementById('programDays');
+  if(program.length===0){ wrap.innerHTML = `<div class="traveler-empty">No activities added yet.</div>`; return; }
+  const groups = {};
+  const order = [];
+  program.forEach(p=>{
+    const key = p.date || 'Unscheduled';
+    if(!groups[key]){ groups[key] = []; order.push(key); }
+    groups[key].push(p);
+  });
+  wrap.innerHTML = order.map(day=>`
+    <div class="day-card">
+      <div class="day-card-head">${escapeHtml(day)}</div>
+      <div class="day-card-body">
+        ${groups[day].map(p=>`
+          <div class="day-item" data-id="${p.id}">
+            <span class="dot"></span>
+            <span class="act">${escapeHtml(p.activity)}</span>
+            <span class="resp">${escapeHtml(p.responsible) || ''}</span>
+          </div>`).join('')}
+      </div>
+    </div>`).join('');
+  wrap.querySelectorAll('.day-item').forEach(el=>el.addEventListener('click', ()=>openGenericView('program', el.getAttribute('data-id'))));
+}
+function openProgramForm(id){
+  const p = id ? program.find(x=>x.id===id) : null;
+  document.getElementById('drawerTitle').textContent = id ? 'Edit activity' : 'Add activity';
+  document.getElementById('drawerBody').innerHTML = `
+    <form id="genForm">
+      <div class="field"><label>Date</label><input type="text" id="f_date" placeholder="e.g. 23 Aug" required></div>
+      <div class="field"><label>Activity</label><input type="text" id="f_act" required></div>
+      <div class="field"><label>Responsible</label>${nameCheckboxes('respChecks', p ? p.responsible : '')}</div>
+      <div class="field"><label>Remarks</label><textarea id="f_rem"></textarea></div>
+      <div class="drawer-actions">
+        <button type="button" class="btn ghost" id="cancelForm">Cancel</button>
+        <button type="submit" class="btn primary">Save</button>
+      </div>
+    </form>`;
+  if(p){
+    document.getElementById('f_date').value=p.date||'';
+    document.getElementById('f_act').value=p.activity||'';
+    document.getElementById('f_rem').value=p.remarks||'';
+  }
+  document.getElementById('cancelForm').addEventListener('click', ()=>{ if(id) openGenericView('program', id); else closeDrawer(); });
+  document.getElementById('genForm').addEventListener('submit', async e=>{
+    e.preventDefault();
+    const data = {
+      date: document.getElementById('f_date').value.trim(),
+      activity: document.getElementById('f_act').value.trim(),
+      responsible: getCheckedNames('respChecks'),
+      remarks: document.getElementById('f_rem').value.trim(),
+      editedBy: editorName || 'Unknown',
+      editedAt: new Date().toISOString(),
+    };
+    if(!data.activity) return;
+    const docId = id || uid('pg');
+    try{ await PROGRAM.doc(docId).set({id:docId, ...data}); await touchLastUpdated(); closeDrawer(); }
+    catch(err){ alert("Couldn't save — check your connection.\n\n"+err.message); }
+  });
+  openDrawer();
+}
+
+/* ---------- generic view + delete for visa/flight/hotel/program ---------- */
+const COLLECTIONS = { visa: VISAS, flight: FLIGHTS, hotel: HOTELS, program: PROGRAM };
+const FORM_OPENERS = { visa: openVisaForm, flight: openFlightForm, hotel: openHotelForm, program: openProgramForm };
+const DATA_LISTS = { visa: ()=>visas, flight: ()=>flights, hotel: ()=>hotels, program: ()=>program };
+const TITLE_FIELDS = { visa: 'name', flight: 'name', hotel: 'guest', program: 'activity' };
+
+function openGenericView(kind, id){
+  const list = DATA_LISTS[kind]();
+  const item = list.find(x=>x.id===id);
+  if(!item) return;
+  document.getElementById('drawerTitle').textContent = item[TITLE_FIELDS[kind]] || 'Detail';
+  const rows = Object.entries(item).filter(([k])=>k!=='id').map(([k,v])=>{
+    const label = k.replace(/([A-Z])/g,' $1').replace(/^./,c=>c.toUpperCase());
+    const display = k === 'editedAt' ? (fmtDateTime(v) || '—') : (escapeHtml(String(v)) || '—');
+    return `<div class="view-item"><div class="k">${label}</div><div class="v">${display}</div></div>`;
+  }).join('');
+  document.getElementById('drawerBody').innerHTML = rows + (editMode ? `<div class="drawer-actions">
+      <button class="btn ghost" id="editThis">Edit</button>
+      <button class="btn ghost" id="deleteThis" style="color:var(--rust);">Delete</button>
+    </div>` : '');
+  if(editMode){
+    document.getElementById('editThis').addEventListener('click', ()=>FORM_OPENERS[kind](id));
+    document.getElementById('deleteThis').addEventListener('click', async ()=>{
+      if(confirm(`Delete this entry?`)){
+        try{ await COLLECTIONS[kind].doc(id).delete(); await touchLastUpdated(); closeDrawer(); }
+        catch(err){ alert("Couldn't delete — check your connection.\n\n"+err.message); }
+      }
+    });
+  }
+  openDrawer();
+}
+
+/* ---------- drawer + mode toggle ---------- */
+function openDrawer(){ document.getElementById('scrim').classList.add('open'); document.getElementById('drawer').classList.add('open'); }
+function closeDrawer(){ document.getElementById('scrim').classList.remove('open'); document.getElementById('drawer').classList.remove('open'); }
+document.getElementById('closeDrawer').addEventListener('click', closeDrawer);
+document.getElementById('scrim').addEventListener('click', closeDrawer);
+
+document.getElementById('addTaskBtn').addEventListener('click', ()=>openTaskForm(null));
+document.getElementById('addVisaBtn').addEventListener('click', ()=>openVisaForm(null));
+document.getElementById('addFlightBtn').addEventListener('click', ()=>openFlightForm(null));
+document.getElementById('addHotelBtn').addEventListener('click', ()=>openHotelForm(null));
+document.getElementById('addProgramBtn').addEventListener('click', ()=>openProgramForm(null));
+document.getElementById('addTravelerBtn').addEventListener('click', ()=>openAddTravelerForm());
+
+document.querySelectorAll('#taskFilters .chip').forEach(chip=>{
+  chip.addEventListener('click', ()=>{
+    document.querySelectorAll('#taskFilters .chip').forEach(c=>c.classList.remove('active'));
+    chip.classList.add('active');
+    taskFilter = chip.getAttribute('data-filter');
+    renderTasks();
+  });
+});
+
+function promptEditorName(onConfirmed){
+  document.getElementById('drawerTitle').textContent = "Who's editing?";
+  document.getElementById('drawerBody').innerHTML = `
+    <form id="identityForm">
+      <div class="field"><label>Name</label>
+        <select id="id_name">
+          <option value="Rose">Rose</option>
+          <option value="Arlene">Arlene</option>
+          <option value="Ann">Ann</option>
+          <option value="Sheila">Sheila</option>
+          <option value="Noushad">Noushad</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>PIN</label>
+        <input type="password" id="id_pin" inputmode="numeric" maxlength="4" placeholder="4-digit PIN">
+      </div>
+      <div class="drawer-actions">
+        <button type="submit" class="btn primary">Confirm</button>
+      </div>
+    </form>
+  `;
+  const select = document.getElementById('id_name');
+  document.getElementById('identityForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = select.value;
+    const pin = document.getElementById('id_pin').value.trim();
+    if(pin !== EDITOR_PINS[name]){
+      alert("That PIN doesn't match. Ask the person for their correct PIN.");
+      return;
+    }
+    editorName = name;
+    localStorage.setItem('s10_editor_name', editorName);
+    renderEditorLine();
+    closeDrawer();
+    if(onConfirmed) onConfirmed();
+  });
+  openDrawer();
+}
+function renderEditorLine(){
+  const el = document.getElementById('editorLine');
+  if(!el) return;
+  el.innerHTML = editorName
+    ? `Editing as <strong>${escapeHtml(editorName)}</strong> · <a href="#" id="changeEditorLink" style="color:var(--gold);">change</a>`
+    : `<a href="#" id="changeEditorLink" style="color:var(--gold);">Set your name</a>`;
+  const link = document.getElementById('changeEditorLink');
+  if(link) link.addEventListener('click', (e) => { e.preventDefault(); promptEditorName(); });
+}
+
+function applyEditModeUI(){
+  document.body.classList.toggle('view-only', !editMode);
+  const toggle = document.getElementById('modeToggle');
+  toggle.classList.toggle('on', editMode);
+  document.getElementById('modeLabel').textContent = editMode ? 'Edit mode' : 'View mode';
+  renderEditorLine();
+}
+document.getElementById('modeToggle').addEventListener('click', ()=>{
+  function activateEditMode(){
+    editMode = true;
+    localStorage.setItem('s10_edit_mode', 'true');
+    applyEditModeUI();
+  }
+  if(!editMode){
+    if(!editorName){
+      promptEditorName(activateEditMode);
+    } else {
+      activateEditMode();
+    }
+  } else {
+    editMode = false;
+    localStorage.setItem('s10_edit_mode', 'false');
+    applyEditModeUI();
+  }
+});
+applyEditModeUI();
+
+startListeners();
+</script>
+</body>
+</html>
