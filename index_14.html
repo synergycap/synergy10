@@ -1,0 +1,1920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Synergy 10 — Istanbul Trip Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    --ink:#1C2430;
+    --paper:#F3F0EA;
+    --surface:#FFFFFF;
+    --gold:#A9762F;
+    --gold-soft:#F1E6D2;
+    --teal:#0F6D5C;
+    --teal-soft:#DCEEE9;
+    --amber:#B3720D;
+    --amber-soft:#F6E7CC;
+    --rust:#A3402B;
+    --rust-soft:#F5DDD6;
+    --slate:#767268;
+    --slate-soft:#E9E5DC;
+    --line:#DDD7C9;
+    --line-strong:#C5BEA9;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;}
+  .disp{font-family:'Fraunces',serif;}
+  .mono{font-family:'JetBrains Mono',monospace;}
+  .wrap{max-width:1180px;margin:0 auto;padding:32px 24px 90px;}
+
+  .header{background:var(--surface);border:1px solid var(--line-strong);border-radius:10px;padding:26px 28px;margin-bottom:20px;position:relative;overflow:hidden;}
+  .header::before{content:"✈";position:absolute;top:-10px;right:20px;font-size:90px;color:var(--gold-soft);transform:rotate(20deg);}
+  .header-row{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;position:relative;z-index:1;}
+  .eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin-bottom:6px;font-weight:600;}
+  .header h1{font-size:26px;font-weight:700;margin:0 0 4px;letter-spacing:-.01em;}
+  .header .sub{font-size:13.5px;color:var(--slate);}
+  .last-updated{font-size:12px;color:var(--slate);margin-top:6px;}
+  .header-meta{display:flex;gap:24px;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px dashed var(--line-strong);position:relative;z-index:1;}
+  .m-item .k{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--slate);font-weight:600;margin-bottom:2px;}
+  .m-item .v{font-size:14px;font-weight:600;}
+
+  .btn{border-radius:6px;padding:9px 15px;font-weight:600;font-size:13px;cursor:pointer;border:1px solid transparent;white-space:nowrap;font-family:'Inter',sans-serif;}
+  .btn.primary{background:var(--ink);color:#fff;}
+  .btn.primary:hover{background:var(--gold);}
+  .btn.ghost{background:var(--surface);border-color:var(--line-strong);color:var(--slate);}
+  .btn.ghost:hover{color:var(--ink);border-color:var(--ink);}
+  .btn.small{padding:6px 11px;font-size:12px;}
+
+  body.view-only .edit-only{display:none !important;}
+  .mode-toggle{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line-strong);border-radius:999px;padding:6px 12px 6px 6px;cursor:pointer;}
+  .mode-toggle .dot{width:20px;height:20px;border-radius:50%;background:var(--slate-soft);border:1.5px solid var(--slate);flex-shrink:0;transition:background .15s,border-color .15s;}
+  .mode-toggle.on .dot{background:var(--teal);border-color:var(--teal);}
+  .mode-toggle .mode-label{font-size:12.5px;font-weight:600;color:var(--slate);white-space:nowrap;}
+  .mode-toggle.on .mode-label{color:var(--teal);}
+
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:26px;}
+  .stat{background:var(--surface);border:1px solid var(--line-strong);border-radius:8px;padding:14px 16px;}
+  .stat .n{font-size:22px;font-weight:700;line-height:1;font-family:'JetBrains Mono',monospace;}
+  .stat .l{font-size:11.5px;color:var(--slate);margin-top:5px;font-weight:500;}
+  .stat.highlight{background:var(--ink);border-color:var(--ink);}
+  .stat.highlight .n{color:var(--gold-soft);}
+  .stat.highlight .l{color:#C9C2B4;}
+
+  .urgent-banner{display:flex;align-items:center;gap:12px;background:var(--rust-soft);border:1px solid var(--rust);border-radius:8px;padding:14px 18px;margin-bottom:20px;}
+  .urgent-banner .icon{font-size:20px;flex-shrink:0;}
+  .urgent-banner .txt{font-size:13.5px;color:var(--rust);}
+  .urgent-banner .txt strong{font-weight:700;}
+
+  .travelers-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;}
+  .traveler-card{background:var(--surface);border:1px solid var(--line-strong);border-radius:8px;padding:14px 16px;cursor:pointer;transition:border-color .15s;}
+  .traveler-card:hover{border-color:var(--ink);}
+  .traveler-card.all-ready{border-color:var(--teal);}
+  .traveler-name{font-weight:700;font-size:14px;margin-bottom:8px;}
+  .pill-row{display:flex;gap:6px;}
+  .pill{flex:1;text-align:center;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:5px 4px;border-radius:5px;}
+  .pill.ok{background:var(--teal-soft);color:var(--teal);}
+  .pill.no{background:var(--slate-soft);color:var(--slate);}
+  .traveler-empty{grid-column:1/-1;text-align:center;padding:30px;color:var(--slate);font-size:13px;background:var(--surface);border:1px dashed var(--line-strong);border-radius:8px;}
+
+  .itinerary-wrap{display:flex;flex-direction:column;gap:12px;}
+  .day-card{background:var(--surface);border:1px solid var(--line-strong);border-radius:8px;overflow:hidden;}
+  .day-card-head{background:var(--ink);color:var(--gold-soft);padding:10px 16px;font-family:'Fraunces',serif;font-weight:600;font-size:14.5px;}
+  .day-card-body{padding:6px 0;}
+  .day-item{display:flex;align-items:center;gap:14px;padding:11px 16px;border-bottom:1px solid var(--line);cursor:pointer;}
+  .day-item:last-child{border-bottom:none;}
+  .day-item:hover{background:var(--paper);}
+  .day-item .dot{width:8px;height:8px;border-radius:50%;background:var(--gold);flex-shrink:0;}
+  .day-item .act{font-weight:600;font-size:13.5px;flex:1;}
+  .day-item .resp{font-size:12px;color:var(--slate);}
+  .money{font-family:'JetBrains Mono',monospace;white-space:nowrap;}
+  .money.over{color:var(--rust);font-weight:600;}
+  .money.under{color:var(--teal);}
+  .action-tag{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:3px 8px;border-radius:3px;white-space:nowrap;}
+  .action-tag.created{background:var(--teal-soft);color:var(--teal);}
+  .action-tag.updated{background:var(--amber-soft);color:var(--amber);}
+  .action-tag.deleted{background:var(--rust-soft);color:var(--rust);}
+  .fx-convert{display:flex;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap;}
+  .fx-convert .fx-label{font-size:11px;color:var(--slate);}
+  .fx-convert select{width:auto;padding:5px 6px;font-size:12px;}
+  .fx-convert input{width:80px;padding:5px 8px;font-size:12px;}
+  .fx-convert button{font-size:11px;padding:5px 9px;}
+
+  .section{margin-bottom:30px;}
+  .section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;}
+  .section-title{font-size:16px;font-weight:700;font-family:'Fraunces',serif;}
+  .section-sub{font-size:12px;color:var(--slate);margin-top:1px;}
+
+  .chips{display:flex;gap:8px;flex-wrap:wrap;}
+  .chip{border:1px solid var(--line-strong);background:var(--surface);color:var(--slate);font-size:12px;font-weight:600;padding:6px 12px;border-radius:999px;cursor:pointer;white-space:nowrap;}
+  .chip.active{background:var(--ink);border-color:var(--ink);color:#fff;}
+  .chip:hover:not(.active){border-color:var(--ink);color:var(--ink);}
+
+  .table-wrap{background:var(--surface);border:1px solid var(--line-strong);border-radius:8px;overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;min-width:600px;}
+  thead th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--slate);font-weight:700;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap;}
+  tbody tr{border-bottom:1px solid var(--line);cursor:pointer;}
+  tbody tr:last-child{border-bottom:none;}
+  tbody tr:hover{background:var(--paper);}
+  td{padding:10px 12px;font-size:13px;vertical-align:top;}
+  .status-tag{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:3px 8px;border-radius:3px;white-space:nowrap;}
+  .status-tag.done{background:var(--teal-soft);color:var(--teal);}
+  .status-tag.progress{background:var(--amber-soft);color:var(--amber);}
+  .status-tag.wait{background:var(--slate-soft);color:var(--slate);}
+  .date-cell{font-family:'JetBrains Mono',monospace;white-space:nowrap;font-size:12px;}
+  .empty-row td{text-align:center;padding:36px 20px;color:var(--slate);font-size:13px;}
+
+  .scrim{position:fixed;inset:0;background:rgba(28,36,48,.45);display:none;z-index:40;}
+  .scrim.open{display:block;}
+  .drawer{position:fixed;top:0;right:0;height:100%;width:460px;max-width:92vw;background:var(--surface);z-index:50;box-shadow:-8px 0 30px rgba(28,36,48,.2);transform:translateX(100%);transition:transform .2s ease;overflow-y:auto;}
+  .drawer.open{transform:translateX(0);}
+  .drawer-head{display:flex;justify-content:space-between;align-items:flex-start;padding:20px 22px 14px;border-bottom:1px solid var(--line);}
+  .drawer-head h2{font-size:16px;margin:0;font-weight:700;}
+  .close-x{background:none;border:none;font-size:20px;color:var(--slate);cursor:pointer;line-height:1;}
+  .close-x:hover{color:var(--ink);}
+  .drawer-body{padding:18px 22px 30px;}
+
+  .field{margin-bottom:13px;}
+  .field label{display:block;font-size:11px;font-weight:700;color:var(--slate);margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em;}
+  .field input, .field textarea, .field select{width:100%;border:1px solid var(--line-strong);border-radius:6px;padding:8px 10px;font-size:13.5px;font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);}
+  .field input:focus, .field textarea:focus, .field select:focus{outline:2px solid var(--gold);outline-offset:1px;}
+  .field textarea{resize:vertical;min-height:60px;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .drawer-actions{display:flex;gap:10px;margin-top:18px;padding-top:16px;border-top:1px solid var(--line);}
+  .drawer-actions .btn{flex:1;}
+  .name-check-group{display:flex;flex-wrap:wrap;gap:6px;}
+  .name-check{display:flex;align-items:center;gap:5px;border:1px solid var(--line-strong);border-radius:6px;padding:6px 10px;font-size:12.5px;cursor:pointer;background:var(--paper);}
+  .name-check input{width:auto;margin:0;}
+  .name-check:has(input:checked){background:var(--gold-soft);border-color:var(--gold);}
+  .view-item{margin-bottom:14px;}
+  .view-item .k{font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--slate);font-weight:700;margin-bottom:3px;}
+  .view-item .v{font-size:13.5px;line-height:1.6;}
+
+  @media (max-width:820px){
+    .stats{grid-template-columns:repeat(2,1fr);}
+    .row2{grid-template-columns:1fr;}
+    .header-meta{gap:14px;}
+  }
+
+  @media print{
+    body{background:#fff;}
+    .no-print, .edit-only, .mode-toggle, .chip, .btn, .scrim, .drawer{display:none !important;}
+    .wrap{max-width:100%;padding:0;}
+    .header::before{display:none;}
+    .header{border:1px solid #ccc;box-shadow:none;}
+    .section{page-break-inside:avoid;margin-bottom:18px;}
+    .table-wrap{border:1px solid #ccc;box-shadow:none;overflow:visible;}
+    table{min-width:0;}
+    tbody tr{cursor:default;}
+    tbody tr:hover{background:none;}
+    .traveler-card, .day-card, .stat{border:1px solid #ccc;box-shadow:none;}
+    .stat.highlight{background:#eee;border-color:#999;}
+    .stat.highlight .n{color:#333;}
+    .stat.highlight .l{color:#555;}
+    .day-card-head{background:#eee;color:#222;}
+    .urgent-banner{border:1px solid #c00;background:#fee;}
+    a{color:inherit;text-decoration:none;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <div class="header-row">
+      <div>
+        <div class="eyebrow mono">Synergy Capital — 10th Anniversary</div>
+        <h1 class="disp">Istanbul Trip Tracker</h1>
+        <div class="sub" id="subLine">22–25 August 2026</div>
+        <div class="last-updated" id="lastUpdatedLine"></div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <button class="mode-toggle" id="modeToggle" title="Toggle view/edit mode">
+          <span class="dot"></span>
+          <span class="mode-label" id="modeLabel">View mode</span>
+        </button>
+        <span class="edit-only" id="editorLine" style="font-size:12px;color:var(--slate);"></span>
+        <button class="btn ghost small no-print" id="printBtn" title="Opens your browser's print dialog — choose 'Save as PDF' as the destination">🖨 Print / Save as PDF</button>
+      </div>
+    </div>
+    <div class="header-meta" id="headerMeta"></div>
+  </div>
+
+  <div class="stats">
+    <div class="stat highlight"><div class="n" id="statDays">—</div><div class="l">Days to departure</div></div>
+    <div class="stat"><div class="n" id="statReadiness">—</div><div class="l">Trip readiness</div></div>
+    <div class="stat"><div class="n" id="statOverdue">—</div><div class="l">Overdue tasks</div></div>
+    <div class="stat"><div class="n" id="statTravelers">—</div><div class="l">Travelers tracked</div></div>
+  </div>
+  <div id="urgentBanner" style="display:none;"></div>
+
+  <!-- TRAVELERS -->
+  <div class="section">
+    <div class="section-head">
+      <div>
+        <div class="section-title">Travelers</div>
+        <div class="section-sub">Visa, flight, and hotel status at a glance — per person</div>
+      </div>
+      <button class="btn primary edit-only small" id="addTravelerBtn">+ Add traveler</button>
+    </div>
+    <div id="travelersGrid" class="travelers-grid"></div>
+  </div>
+
+  <!-- MASTER TIMELINE -->
+  <div class="section">
+    <div class="section-head">
+      <div>
+        <div class="section-title">Master Timeline</div>
+        <div class="section-sub">Every task from planning to departure</div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <div class="chips" id="taskFilters">
+          <button class="chip active" data-filter="all">All</button>
+          <button class="chip" data-filter="open">Open</button>
+          <button class="chip" data-filter="overdue">Overdue</button>
+          <button class="chip" data-filter="done">Completed</button>
+        </div>
+        <button class="btn primary edit-only small" id="addTaskBtn">+ Add task</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Start</th><th>Target</th><th>Task</th><th>Owner</th><th>Status</th></tr></thead>
+        <tbody id="tasksTbody"><tr class="empty-row"><td colspan="5">Connecting…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- VISA TRACKER -->
+  <div class="section">
+    <div class="section-head">
+      <div>
+        <div class="section-title">Visa Tracker</div>
+        <div class="section-sub">Per-traveler visa status</div>
+      </div>
+      <button class="btn primary edit-only small" id="addVisaBtn">+ Add traveler</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Name</th><th>Nationality</th><th>Visa Required</th><th>Application</th><th>Approval</th><th>Status</th></tr></thead>
+        <tbody id="visasTbody"><tr class="empty-row"><td colspan="6">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- FLIGHT TRACKER -->
+  <div class="section">
+    <div class="section-head">
+      <div>
+        <div class="section-title">Flight Tracker</div>
+        <div class="section-sub">Departure and return details per traveler</div>
+      </div>
+      <button class="btn primary edit-only small" id="addFlightBtn">+ Add flight</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Name</th><th>Departure</th><th>Return</th><th>PNR</th><th>Seat</th></tr></thead>
+        <tbody id="flightsTbody"><tr class="empty-row"><td colspan="5">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- HOTEL TRACKER -->
+  <div class="section">
+    <div class="section-head">
+      <div>
+        <div class="section-title">Hotel Tracker</div>
+        <div class="section-sub">Rooming and confirmation details</div>
+      </div>
+      <button class="btn primary edit-only small" id="addHotelBtn">+ Add guest</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Guest</th><th>Hotel</th><th>Check-in</th><th>Check-out</th><th>Room</th><th>Confirmation</th></tr></thead>
+        <tbody id="hotelsTbody"><tr class="empty-row"><td colspan="6">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- EVENT PROGRAM -->
+  <div class="section">
+    <div class="section-head">
+      <div>
+        <div class="section-title">Istanbul Itinerary</div>
+        <div class="section-sub">Day by day, what's happening and who's running it</div>
+      </div>
+      <button class="btn primary edit-only small" id="addProgramBtn">+ Add activity</button>
+    </div>
+    <div id="programDays" class="itinerary-wrap"></div>
+  </div>
+
+  <!-- BUDGET -->
+  <div class="section">
+    <div class="section-head">
+      <div>
+        <div class="section-title">Budget</div>
+        <div class="section-sub">Envelope, category spend, line items, and payments</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <div class="chips" id="currencyChips">
+          <button class="chip" data-cur="AED">AED</button>
+          <button class="chip active" data-cur="USD">USD</button>
+          <button class="chip" data-cur="EUR">EUR</button>
+        </div>
+        <button class="btn ghost edit-only small" id="editFxBtn">Edit FX rates</button>
+        <button class="btn ghost edit-only small" id="editAssumptionsBtn">Edit assumptions</button>
+      </div>
+    </div>
+    <div class="section-sub" id="fxNote" style="margin-bottom:14px;"></div>
+
+    <div class="stats" style="margin-bottom:16px;">
+      <div class="stat"><div class="n" id="budgetAttendees">—</div><div class="l">Attendees planned</div></div>
+      <div class="stat"><div class="n" id="budgetEnvelope">—</div><div class="l">Envelope (low–high)</div></div>
+      <div class="stat"><div class="n" id="budgetTotalBudgeted">—</div><div class="l">Total budgeted</div></div>
+      <div class="stat"><div class="n" id="budgetTotalActual">—</div><div class="l">Total actual / quoted</div></div>
+    </div>
+    <div id="budgetEnvelopeNote" style="font-size:12.5px;color:var(--slate);margin-bottom:20px;"></div>
+
+    <div class="section-sub" style="font-weight:700;color:var(--ink);margin-bottom:8px;">By category</div>
+    <div class="table-wrap" style="margin-bottom:22px;">
+      <table>
+        <thead><tr><th>Category</th><th>Budgeted</th><th>Actual</th><th>Variance</th><th>Per person</th><th>Status</th></tr></thead>
+        <tbody id="budgetCatsTbody"><tr class="empty-row"><td colspan="6">Loading…</td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="section-head">
+      <div class="section-sub" style="font-weight:700;color:var(--ink);">Line items</div>
+      <button class="btn primary edit-only small" id="addBudgetItemBtn">+ Add line item</button>
+    </div>
+    <div class="table-wrap" style="margin-bottom:22px;">
+      <table>
+        <thead><tr><th>Vendor</th><th>Category</th><th>Description</th><th>Unit</th><th>Qty</th><th>Type</th><th>Total</th></tr></thead>
+        <tbody id="budgetItemsTbody"><tr class="empty-row"><td colspan="7">Loading…</td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="section-head">
+      <div class="section-sub" style="font-weight:700;color:var(--ink);">Payment & deposit tracker</div>
+      <button class="btn primary edit-only small" id="addBudgetPaymentBtn">+ Add payment</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Vendor</th><th>Category</th><th>Deposit</th><th>Deposit due</th><th>Balance due</th><th>Balance due date</th><th>Status</th></tr></thead>
+        <tbody id="budgetPaymentsTbody"><tr class="empty-row"><td colspan="7">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ACTIVITY LOG -->
+  <div class="section">
+    <div class="section-head">
+      <div>
+        <div class="section-title">Activity Log</div>
+        <div class="section-sub">Every add, edit, and delete — who did it and when, in order</div>
+      </div>
+      <div class="chips" id="activityFilters">
+        <button class="chip active" data-actor="all">Everyone</button>
+        <button class="chip" data-actor="Rose">Rose</button>
+        <button class="chip" data-actor="Arlene">Arlene</button>
+        <button class="chip" data-actor="Ann">Ann</button>
+        <button class="chip" data-actor="Sheila">Sheila</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>When</th><th>Who</th><th>Action</th><th>Item</th></tr></thead>
+        <tbody id="activityTbody"><tr class="empty-row"><td colspan="4">No activity logged yet.</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<div class="scrim" id="scrim"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-head">
+    <h2 id="drawerTitle">Detail</h2>
+    <button class="close-x" id="closeDrawer">&times;</button>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBrtciRujlUVgnybjYRzmoXsw3DJnUyqFU",
+  authDomain: "subscription-c5e02.firebaseapp.com",
+  projectId: "subscription-c5e02",
+  storageBucket: "subscription-c5e02.firebasestorage.app",
+  messagingSenderId: "147400627686",
+  appId: "1:147400627686:web:e223b99ae8dcad24a7b227"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+const META_DOC = db.collection('synergy10_meta').doc('project');
+const TASKS = db.collection('synergy10_tasks');
+const VISAS = db.collection('synergy10_visas');
+const FLIGHTS = db.collection('synergy10_flights');
+const HOTELS = db.collection('synergy10_hotels');
+const PROGRAM = db.collection('synergy10_program');
+const TRAVELERS = db.collection('synergy10_travelers');
+const BUDGET_CATS = db.collection('synergy10_budget_cats');
+const BUDGET_ITEMS = db.collection('synergy10_budget_items');
+const BUDGET_PAYMENTS = db.collection('synergy10_budget_payments');
+const ACTIVITY_LOG = db.collection('synergy10_activity_log');
+
+let seededMeta = false, seededTasks = false, seededProgram = false, ownerMigrated = false;
+let seededBudgetCats = false, seededBudgetItems = false, seededBudgetPayments = false;
+let budgetCatsMigratedV2 = false, budgetItemsMigratedV2 = false;
+
+const SEED_META = {
+  eventName: "Synergy 10 Anniversary Event",
+  location: "Istanbul, Turkey",
+  departureDate: "2026-08-22",
+  returnDate: "2026-08-25",
+  attendeeCount: 44,
+  perPersonLow: 2000,
+  perPersonHigh: 3000,
+  fxRates: { USD: 3.6725, EUR: 4.00 }
+};
+
+const SEED_BUDGET_CATS = [
+  {id:"bc01", name:"Bosphorus Cruise (Welcome Dinner, Sat)", budgeted:0, notes:""},
+  {id:"bc02", name:"Themed Dinner (offsite, Sun)", budgeted:0, notes:""},
+  {id:"bc03", name:"Gala Night", budgeted:0, notes:""},
+  {id:"bc04", name:"Team Building", budgeted:0, notes:""},
+  {id:"bc05", name:"Motivational Speaker", budgeted:0, notes:""},
+  {id:"bc06", name:"Airport Transfers (IST/SAW)", budgeted:0, notes:""},
+  {id:"bc07", name:"Alcohol (optional add-on)", budgeted:0, notes:""},
+  {id:"bc08", name:"AV / Production", budgeted:0, notes:""},
+  {id:"bc09", name:"Gifts / Mementos", budgeted:0, notes:""},
+  {id:"bc10", name:"Contingency (5–10%)", budgeted:0, notes:""},
+  {id:"bc11", name:"Air Fares", budgeted:20000, notes:"Excl. P-Sps & M-Fam"},
+  {id:"bc13", name:"Accommodation", budgeted:6000, notes:"Partners, Agni - Double Room"},
+  {id:"bc15", name:"Hotel DXB (Overseas Team) 3N", budgeted:0, notes:""},
+  {id:"bc17", name:"Hotel Accommodation - Partners", budgeted:0, notes:""},
+  {id:"bc18", name:"Air Fares (DXB)", budgeted:0, notes:""},
+  {id:"bc19", name:"Air Fares (IND)", budgeted:0, notes:""},
+  {id:"bc20", name:"Air Fares (SG)", budgeted:0, notes:""},
+  {id:"bc21", name:"Air Fares (NL)", budgeted:0, notes:""},
+  {id:"bc22", name:"Turkey Visa Fees (UAE)", budgeted:5001.92, notes:"21 pax Standard Visa, via VFS"},
+  {id:"bc23", name:"Turkey Visa Fees (IND)", budgeted:350, notes:"6 pax (IND) eVisa"},
+  {id:"bc24", name:"Turkey eVisa Fees", budgeted:26.14, notes:"1 pax (PH) eVisa"}
+];
+
+const SEED_BUDGET_ITEMS = [
+  {id:"bi01", vendor:"VFS", category:"Turkey Visa Fees (UAE)", description:"22 Employees", unitCost:227.36, qty:22, costType:"Per-Employee", notes:"Via agency - group booking"},
+  {id:"bi02", vendor:"Online", category:"Turkey Visa Fees (IND)", description:"7 IND Employees", unitCost:50, qty:7, costType:"Per-Employee", notes:"Online"},
+  {id:"bi03", vendor:"Online", category:"Turkey eVisa Fees", description:"1 PH Employee", unitCost:26.14, qty:1, costType:"Per-Employee", notes:"Online"},
+  {id:"bi04", vendor:"Aspire Creative", category:"Gifts / Mementos", description:"Special Design Synergy 10 Anniv Hats", unitCost:10.21, qty:44, costType:"Per-Employee", notes:""},
+  {id:"bi05", vendor:"Aspire Creative", category:"Gifts / Mementos", description:"Special Design Synergy 10 Anniv T-shirts", unitCost:12.19, qty:44, costType:"Per-Employee", notes:""},
+  {id:"bi06", vendor:"Sheraton", category:"Airport Transfers (IST/SAW)", description:"Mercedes Sprinter Van (7 employees and 7 luggage)", unitCost:356.73, qty:6, costType:"Shared", notes:""},
+  {id:"bi07", vendor:"Uranus Travel", category:"VFS Appointment Fee", description:"18 Employees", unitCost:104.83, qty:18, costType:"Per-Employee", notes:"Category doesn't match a Budget Summary category — check with finance"},
+  {id:"bi08", vendor:"Uranus Travel", category:"VFS Appointment Fee", description:"1 Employee", unitCost:104.83, qty:1, costType:"Per-Employee", notes:"Category doesn't match a Budget Summary category — check with finance"}
+];
+
+const SEED_BUDGET_PAYMENTS = [
+  {id:"bp01", vendor:"Uranus Travel", category:"VFS Appointment Fee", deposit:1887, depositDue:"", balanceDue:"", balanceDueDate:"", status:""},
+  {id:"bp02", vendor:"Uranus Travel", category:"VFS Appointment Fee", deposit:105, depositDue:"", balanceDue:"", balanceDueDate:"", status:""}
+];
+
+const SEED_TASKS = [
+  {id:"tk01", startDate:"2026-07-23", targetDate:"ASAP", task:"Standard Visas", owner:"Rose, Arlene, Ann", status:"Started", remarks:"VFS appointments done on 23 July 2026 & 27 July 2026"},
+  {id:"tk02", startDate:"2026-07-27", targetDate:"2026-07-31", task:"E-Visas", owner:"Rose, Arlene", status:"Not Started", remarks:""},
+  {id:"tk03", startDate:"ASAP", targetDate:"ASAP", task:"Flights Confirmation", owner:"Sheila, Rose, Arlene", status:"Quotations Received", remarks:"Waiting for approval from management, to be done after visas are approved"},
+  {id:"tk04", startDate:"ASAP", targetDate:"ASAP", task:"Hotel Confirmation", owner:"Sheila, Rose, Arlene", status:"Quotations Received", remarks:"Waiting for approval from management"},
+  {id:"tk05", startDate:"ASAP", targetDate:"ASAP", task:"Event Coordinators", owner:"Sheila, Rose, Arlene", status:"For Review", remarks:""},
+  {id:"tk06", startDate:"2026-08-03", targetDate:"2026-08-07", task:"Land Transportation (Dubai/Sharjah)", owner:"Arlene, Ann", status:"Not Started", remarks:""},
+  {id:"tk07", startDate:"2026-07-14", targetDate:"2026-07-17", task:"Momentos - Synergy 10 layout", owner:"Sheila", status:"Not Started", remarks:"Quotations are ready, for approval to proceed"},
+  {id:"tk08", startDate:"2026-07-20", targetDate:"2026-07-24", task:"Momentos approval — to proceed with production", owner:"Sheila", status:"Not Started", remarks:""},
+  {id:"tk09", startDate:"2026-08-03", targetDate:"2026-08-07", task:"Istanbul Airport Transfers", owner:"Arlene, Ann", status:"Not Started", remarks:""},
+  {id:"tk10", startDate:"2026-08-03", targetDate:"2026-08-14", task:"Travel Documents Review", owner:"Rose, Arlene, Ann", status:"Not Started", remarks:""},
+  {id:"tk11", startDate:"", targetDate:"22 Aug 2026", task:"Departure to Istanbul", owner:"Sheila, Arlene, Rose, Ann", status:"Pending", remarks:""},
+  {id:"tk12", startDate:"", targetDate:"22-25 Aug 2026", task:"Synergy 10 Anniversary Event", owner:"Sheila, Arlene, Rose, Ann", status:"Pending", remarks:""},
+  {id:"tk13", startDate:"", targetDate:"25 Aug 2026", task:"Return to Dubai", owner:"Sheila, Arlene, Rose, Ann", status:"Pending", remarks:""}
+];
+
+const SEED_PROGRAM = [
+  {id:"pg01", date:"22 Aug", activity:"Arrival and Check-in", responsible:"", remarks:""},
+  {id:"pg02", date:"22 Aug", activity:"Dinner at Bhospuros", responsible:"", remarks:""},
+  {id:"pg03", date:"23 Aug", activity:"Synergy 10 Celebration", responsible:"", remarks:""},
+  {id:"pg04", date:"24 Aug", activity:"Team Activity / Istanbul Tour", responsible:"", remarks:""},
+  {id:"pg05", date:"25 Aug", activity:"Departure", responsible:"", remarks:""}
+];
+
+let meta = null, tasks = [], visas = [], flights = [], hotels = [], program = [], travelers = [];
+let budgetCats = [], budgetItems = [], budgetPayments = [];
+let activityLog = [];
+let displayCurrency = localStorage.getItem('s10_display_currency') || 'USD';
+const CURRENCY_SYMBOLS = {AED:'AED ', USD:'$', EUR:'€'};
+let editMode = localStorage.getItem('s10_edit_mode') === 'true';
+let editorName = localStorage.getItem('s10_editor_name') || '';
+if(editMode && !editorName){
+  editMode = false;
+  localStorage.setItem('s10_edit_mode', 'false');
+}
+const EDITOR_PINS = { "Rose": "0218", "Arlene": "0221", "Ann": "0200", "Sheila": "0217", "Noushad": "1475" };
+let taskFilter = 'all';
+
+const TEAM_NAMES = ["Rose", "Arlene", "Ann", "Sheila"];
+function nameCheckboxes(fieldId, selectedStr){
+  const selected = (selectedStr||'').split(',').map(s=>s.trim()).filter(Boolean);
+  return `<div class="name-check-group" id="${fieldId}">
+    ${TEAM_NAMES.map(n=>`
+      <label class="name-check">
+        <input type="checkbox" value="${n}" ${selected.includes(n)?'checked':''}>
+        <span>${n}</span>
+      </label>`).join('')}
+  </div>`;
+}
+function getCheckedNames(fieldId){
+  return Array.from(document.querySelectorAll(`#${fieldId} input:checked`)).map(i=>i.value).join(', ');
+}
+
+function uid(prefix){ return prefix + '_' + Date.now() + '_' + Math.random().toString(36).slice(2,6); }
+function escapeHtml(str){ const d=document.createElement('div'); d.textContent = str||''; return d.innerHTML; }
+function fmtDate(v){
+  if(!v) return '—';
+  const d = new Date(v + 'T00:00:00');
+  if(isNaN(d.getTime())) return v;
+  return d.toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'});
+}
+function fmtDateTime(iso){
+  if(!iso) return null;
+  const d = new Date(iso);
+  if(isNaN(d.getTime())) return null;
+  return `${d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}, ${d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}`;
+}
+async function touchLastUpdated(){
+  try{ await META_DOC.set({lastUpdated: new Date().toISOString()}, {merge:true}); }catch(e){ console.error(e); }
+}
+async function logActivity(action, entityType, label){
+  try{
+    await ACTIVITY_LOG.add({
+      timestamp: new Date().toISOString(),
+      actor: editorName || 'Unknown',
+      action, entityType, entityLabel: label
+    });
+  }catch(e){ console.error('activity log failed', e); }
+}
+function statusClass(status){
+  const s = (status||'').toLowerCase();
+  if(s.includes('complet') || s.includes('approved') || s.includes('confirmed')) return 'done';
+  if(s.includes('not started') || s.includes('pending')) return 'wait';
+  return 'progress';
+}
+const MONTHS = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+function parseFlexDate(str){
+  if(!str) return null;
+  const s = str.trim();
+  const isIso = /^\d{4}-\d{2}-\d{2}$/.test(s);
+  // Reject anything with a dash/en-dash that isn't plain ISO — that's a range like "22-25 Aug 2026", not one deadline
+  if(!isIso && /[-–—]/.test(s)) return null;
+  if(isIso){
+    const d = new Date(s + 'T00:00:00');
+    return isNaN(d.getTime()) ? null : d;
+  }
+  // "22 Aug 2026" or "22 August 2026"
+  const m = s.match(/^(\d{1,2})\s+([A-Za-z]{3,})\s+(\d{4})$/);
+  if(m){
+    const day = parseInt(m[1],10);
+    const monKey = m[2].slice(0,3).toLowerCase();
+    const year = parseInt(m[3],10);
+    if(MONTHS[monKey] !== undefined){
+      const d = new Date(year, MONTHS[monKey], day);
+      return isNaN(d.getTime()) ? null : d;
+    }
+  }
+  // Anything else (ASAP, TBC, free text) — can't confidently read as one date
+  return null;
+}
+function isOverdue(task){
+  if(statusClass(task.status) === 'done') return false;
+  const target = parseFlexDate(task.targetDate);
+  if(!target) return false;
+  const today = new Date(); today.setHours(0,0,0,0);
+  return target < today;
+}
+
+function startListeners(){
+  META_DOC.onSnapshot(async snap=>{
+    if(!snap.exists && !seededMeta){ seededMeta = true; await META_DOC.set(SEED_META); return; }
+    meta = snap.data();
+    if(meta.attendeeCount === undefined){
+      meta = {...meta, attendeeCount: SEED_META.attendeeCount, perPersonLow: SEED_META.perPersonLow, perPersonHigh: SEED_META.perPersonHigh};
+      await META_DOC.set(meta, {merge:true});
+      return;
+    }
+    if(!meta.fxRates){
+      meta = {...meta, fxRates: SEED_META.fxRates};
+      await META_DOC.set(meta, {merge:true});
+      return;
+    }
+    renderHeaderMeta();
+    renderBudget();
+  }, err=>console.error('meta err', err));
+
+  TASKS.onSnapshot(async snap=>{
+    if(snap.empty && !seededTasks){
+      seededTasks = true;
+      const batch = db.batch();
+      SEED_TASKS.forEach(t=>batch.set(TASKS.doc(t.id), t));
+      await batch.commit();
+      return;
+    }
+    tasks = snap.docs.map(d=>d.data());
+
+    if(!ownerMigrated){
+      ownerMigrated = true;
+      const ABBR_MAP = {RAA:"Rose", AV:"Arlene", SN:"Sheila", AAA:"Ann"};
+      const migBatch = db.batch();
+      let needsMig = false;
+      tasks.forEach(t=>{
+        if(!t.owner) return;
+        const parts = t.owner.split(',').map(p=>p.trim());
+        const mapped = parts.map(p=>ABBR_MAP[p] || p);
+        if(mapped.join(', ') !== t.owner){
+          needsMig = true;
+          migBatch.set(TASKS.doc(t.id), {...t, owner: mapped.join(', ')});
+        }
+      });
+      if(needsMig){ await migBatch.commit(); return; }
+    }
+
+    renderTasks(); renderStats();
+  }, err=>console.error('tasks err', err));
+
+  VISAS.onSnapshot(snap=>{
+    visas = snap.docs.map(d=>d.data());
+    renderVisas(); renderStats(); renderTravelers();
+  }, err=>console.error('visas err', err));
+
+  FLIGHTS.onSnapshot(snap=>{
+    flights = snap.docs.map(d=>d.data());
+    renderFlights(); renderStats(); renderTravelers();
+  }, err=>console.error('flights err', err));
+
+  HOTELS.onSnapshot(snap=>{
+    hotels = snap.docs.map(d=>d.data());
+    renderHotels(); renderStats(); renderTravelers();
+  }, err=>console.error('hotels err', err));
+
+  BUDGET_CATS.onSnapshot(async snap=>{
+    if(snap.empty && !seededBudgetCats){
+      seededBudgetCats = true;
+      const batch = db.batch();
+      SEED_BUDGET_CATS.forEach(c=>batch.set(BUDGET_CATS.doc(c.id), c));
+      await batch.commit();
+      return;
+    }
+    budgetCats = snap.docs.map(d=>d.data());
+
+    if(!budgetCatsMigratedV2){
+      budgetCatsMigratedV2 = true;
+      const byName = Object.fromEntries(budgetCats.map(c=>[c.name, c]));
+      const batch = db.batch();
+      let needsMig = false;
+
+      if(byName["Gala Night (in-hotel, Mon)"]){
+        needsMig = true;
+        const c = byName["Gala Night (in-hotel, Mon)"];
+        batch.set(BUDGET_CATS.doc(c.id), {...c, name:"Gala Night"});
+      }
+      if(byName["UAE Visa (Overseas Team)"]){
+        needsMig = true;
+        batch.delete(BUDGET_CATS.doc(byName["UAE Visa (Overseas Team)"].id));
+      }
+      if(byName["Turkey Visa Fees"]){
+        needsMig = true;
+        batch.delete(BUDGET_CATS.doc(byName["Turkey Visa Fees"].id));
+        batch.set(BUDGET_CATS.doc("bc22"), {id:"bc22", name:"Turkey Visa Fees (UAE)", budgeted:5001.92, notes:"21 pax Standard Visa, via VFS"});
+        batch.set(BUDGET_CATS.doc("bc23"), {id:"bc23", name:"Turkey Visa Fees (IND)", budgeted:350, notes:"6 pax (IND) eVisa"});
+        batch.set(BUDGET_CATS.doc("bc24"), {id:"bc24", name:"Turkey eVisa Fees", budgeted:26.14, notes:"1 pax (PH) eVisa"});
+      }
+      if(byName["Air Fares (Overseas Team)"]){
+        needsMig = true;
+        batch.delete(BUDGET_CATS.doc(byName["Air Fares (Overseas Team)"].id));
+        batch.set(BUDGET_CATS.doc("bc18"), {id:"bc18", name:"Air Fares (DXB)", budgeted:0, notes:""});
+        batch.set(BUDGET_CATS.doc("bc19"), {id:"bc19", name:"Air Fares (IND)", budgeted:0, notes:""});
+        batch.set(BUDGET_CATS.doc("bc20"), {id:"bc20", name:"Air Fares (SG)", budgeted:0, notes:""});
+        batch.set(BUDGET_CATS.doc("bc21"), {id:"bc21", name:"Air Fares (NL)", budgeted:0, notes:""});
+      }
+      if(!byName["Hotel Accommodation - Partners"]){
+        needsMig = true;
+        batch.set(BUDGET_CATS.doc("bc17"), {id:"bc17", name:"Hotel Accommodation - Partners", budgeted:0, notes:""});
+      }
+
+      if(needsMig){ await batch.commit(); return; }
+    }
+
+    renderBudget();
+  }, err=>console.error('budget cats err', err));
+
+  BUDGET_ITEMS.onSnapshot(async snap=>{
+    if(snap.empty && !seededBudgetItems){
+      seededBudgetItems = true;
+      const batch = db.batch();
+      SEED_BUDGET_ITEMS.forEach(i=>batch.set(BUDGET_ITEMS.doc(i.id), i));
+      await batch.commit();
+      return;
+    }
+    budgetItems = snap.docs.map(d=>d.data());
+
+    if(!budgetItemsMigratedV2){
+      budgetItemsMigratedV2 = true;
+      const REASSIGN = {
+        "bi01": "Turkey Visa Fees (UAE)",
+        "bi02": "Turkey Visa Fees (IND)",
+        "bi03": "Turkey eVisa Fees"
+      };
+      const itemsBatch = db.batch();
+      let needsItemMig = false;
+      budgetItems.forEach(item=>{
+        if(REASSIGN[item.id] && item.category !== REASSIGN[item.id]){
+          needsItemMig = true;
+          itemsBatch.set(BUDGET_ITEMS.doc(item.id), {...item, category: REASSIGN[item.id]});
+        }
+      });
+      if(needsItemMig){ await itemsBatch.commit(); return; }
+    }
+
+    renderBudget();
+  }, err=>console.error('budget items err', err));
+
+  BUDGET_PAYMENTS.onSnapshot(async snap=>{
+    if(snap.empty && !seededBudgetPayments){
+      seededBudgetPayments = true;
+      const batch = db.batch();
+      SEED_BUDGET_PAYMENTS.forEach(p=>batch.set(BUDGET_PAYMENTS.doc(p.id), p));
+      await batch.commit();
+      return;
+    }
+    budgetPayments = snap.docs.map(d=>d.data());
+    renderBudget();
+  }, err=>console.error('budget payments err', err));
+
+  ACTIVITY_LOG.onSnapshot(snap=>{
+    activityLog = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    renderActivityLog();
+  }, err=>console.error('activity log err', err));
+
+  TRAVELERS.onSnapshot(snap=>{
+    travelers = snap.docs.map(d=>d.data());
+    renderStats(); renderTravelers();
+  }, err=>console.error('travelers err', err));
+
+  PROGRAM.onSnapshot(async snap=>{
+    if(snap.empty && !seededProgram){
+      seededProgram = true;
+      const batch = db.batch();
+      SEED_PROGRAM.forEach(p=>batch.set(PROGRAM.doc(p.id), p));
+      await batch.commit();
+      return;
+    }
+    program = snap.docs.map(d=>d.data());
+    renderProgram();
+  }, err=>console.error('program err', err));
+}
+
+function renderHeaderMeta(){
+  if(!meta) return;
+  document.getElementById('subLine').textContent = `${fmtDate(meta.departureDate)} – ${fmtDate(meta.returnDate)} · ${meta.location||''}`;
+  const lu = fmtDateTime(meta.lastUpdated);
+  document.getElementById('lastUpdatedLine').innerHTML = lu ? `Last updated: <strong>${lu}</strong>` : '';
+  document.getElementById('headerMeta').innerHTML = `
+    <div class="m-item"><div class="k">Event</div><div class="v">${escapeHtml(meta.eventName)}</div></div>
+    <div class="m-item"><div class="k">Location</div><div class="v">${escapeHtml(meta.location)}</div></div>
+    <div class="m-item"><div class="k">Departure</div><div class="v">${fmtDate(meta.departureDate)}</div></div>
+    <div class="m-item"><div class="k">Return</div><div class="v">${fmtDate(meta.returnDate)}</div></div>
+  `;
+  renderStats();
+}
+
+function travelerReadiness(name){
+  const v = visas.find(x=>x.name===name);
+  const f = flights.find(x=>x.name===name);
+  const h = hotels.find(x=>x.guest===name);
+  const visaOk = v && /approved/i.test(v.status||'');
+  const flightOk = !!(f && f.departure && f.returnFlight);
+  const hotelOk = !!(h && h.checkin && h.checkout);
+  return {v, f, h, visaOk, flightOk, hotelOk, allOk: visaOk && flightOk && hotelOk};
+}
+function getAllTravelerNames(){
+  const names = new Set();
+  travelers.forEach(t=>{ if(t.name) names.add(t.name); });
+  visas.forEach(v=>{ if(v.name) names.add(v.name); });
+  flights.forEach(f=>{ if(f.name) names.add(f.name); });
+  hotels.forEach(h=>{ if(h.guest) names.add(h.guest); });
+  return Array.from(names);
+}
+
+function renderStats(){
+  if(meta && meta.departureDate){
+    const today = new Date(); today.setHours(0,0,0,0);
+    const dep = new Date(meta.departureDate + 'T00:00:00');
+    const days = Math.round((dep - today)/86400000);
+    document.getElementById('statDays').textContent = isNaN(days) ? '—' : (days >= 0 ? days : 'Departed');
+  }
+
+  const overdueTasks = tasks.filter(isOverdue);
+  document.getElementById('statOverdue').textContent = overdueTasks.length;
+
+  const names = getAllTravelerNames();
+  document.getElementById('statTravelers').textContent = names.length;
+
+  const doneTasks = tasks.filter(t=>statusClass(t.status)==='done').length;
+  const taskScore = tasks.length ? doneTasks/tasks.length : 1;
+  const readyCount = names.filter(n=>travelerReadiness(n).allOk).length;
+  const travelerScore = names.length ? readyCount/names.length : 1;
+  const overall = tasks.length || names.length ? Math.round(((taskScore + travelerScore) / (names.length ? 2 : 1)) * 100) : 0;
+  document.getElementById('statReadiness').textContent = (tasks.length || names.length) ? overall + '%' : '—';
+
+  const banner = document.getElementById('urgentBanner');
+  if(overdueTasks.length > 0){
+    const worst = overdueTasks.sort((a,b)=>(parseFlexDate(a.targetDate)-parseFlexDate(b.targetDate)))[0];
+    banner.style.display = 'flex';
+    banner.className = 'urgent-banner';
+    banner.innerHTML = `<span class="icon">⚠</span><span class="txt">${overdueTasks.length} task${overdueTasks.length>1?'s':''} past target date — most urgent: <strong>${escapeHtml(worst.task)}</strong> (was due ${fmtDate(worst.targetDate)})</span>`;
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
+/* ---------- TASKS (Master Timeline) ---------- */
+function renderTasks(){
+  let list = tasks.slice();
+  if(taskFilter === 'done') list = list.filter(t=>statusClass(t.status)==='done');
+  if(taskFilter === 'open') list = list.filter(t=>statusClass(t.status)!=='done');
+  if(taskFilter === 'overdue') list = list.filter(isOverdue);
+  const tbody = document.getElementById('tasksTbody');
+  if(list.length===0){ tbody.innerHTML = `<tr class="empty-row"><td colspan="5">No tasks in this view.</td></tr>`; return; }
+  tbody.innerHTML = list.map(t=>`
+    <tr data-id="${t.id}">
+      <td class="date-cell">${fmtDate(t.startDate)}</td>
+      <td class="date-cell">${fmtDate(t.targetDate)}</td>
+      <td style="font-weight:600;">${escapeHtml(t.task)}</td>
+      <td>${escapeHtml(t.owner)}</td>
+      <td><span class="status-tag ${statusClass(t.status)}">${escapeHtml(t.status)}</span>${isOverdue(t) ? ` <span class="status-tag done" style="background:var(--rust-soft);color:var(--rust);">Overdue</span>` : ''}</td>
+    </tr>`).join('');
+  tbody.querySelectorAll('tr[data-id]').forEach(tr=>tr.addEventListener('click', ()=>openTaskView(tr.getAttribute('data-id'))));
+}
+function openTaskView(id){
+  const t = tasks.find(x=>x.id===id);
+  if(!t) return;
+  document.getElementById('drawerTitle').textContent = t.task;
+  document.getElementById('drawerBody').innerHTML = `
+    <div class="view-item"><div class="k">Status</div><div class="v"><span class="status-tag ${statusClass(t.status)}">${escapeHtml(t.status)}</span></div></div>
+    <div class="view-item"><div class="k">Start date</div><div class="v">${fmtDate(t.startDate)}</div></div>
+    <div class="view-item"><div class="k">Target completion</div><div class="v">${fmtDate(t.targetDate)}</div></div>
+    <div class="view-item"><div class="k">Owner</div><div class="v">${escapeHtml(t.owner)}</div></div>
+    <div class="view-item"><div class="k">Remarks</div><div class="v">${escapeHtml(t.remarks) || '—'}</div></div>
+    ${t.editedBy ? `<div class="view-item"><div class="k">Last edited</div><div class="v" style="color:var(--slate);font-size:12px;">${escapeHtml(t.editedBy)}${t.editedAt ? ` · ${fmtDateTime(t.editedAt)}` : ''}</div></div>` : ''}
+    ${editMode ? `<div class="drawer-actions">
+      <button class="btn ghost" id="editThis">Edit</button>
+      <button class="btn ghost" id="deleteThis" style="color:var(--rust);">Delete</button>
+    </div>` : ''}
+  `;
+  if(editMode){
+    document.getElementById('editThis').addEventListener('click', ()=>openTaskForm(id));
+    document.getElementById('deleteThis').addEventListener('click', async ()=>{
+      if(confirm(`Delete "${t.task}"?`)){
+        try{ await TASKS.doc(id).delete(); await logActivity('deleted','Task', t.task); await touchLastUpdated(); closeDrawer(); }
+        catch(err){ alert("Couldn't delete — check your connection.\n\n"+err.message); }
+      }
+    });
+  }
+  openDrawer();
+}
+function openTaskForm(id){
+  const t = id ? tasks.find(x=>x.id===id) : null;
+  document.getElementById('drawerTitle').textContent = id ? 'Edit task' : 'Add task';
+  document.getElementById('drawerBody').innerHTML = `
+    <form id="taskForm">
+      <div class="field"><label>Task</label><input type="text" id="f_task" required></div>
+      <div class="row2">
+        <div class="field"><label>Start date</label><input type="text" id="f_start" placeholder="YYYY-MM-DD or ASAP"></div>
+        <div class="field"><label>Target completion</label><input type="text" id="f_target" placeholder="YYYY-MM-DD or ASAP"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Owner</label>${nameCheckboxes('ownerChecks', t ? t.owner : '')}</div>
+        <div class="field"><label>Status</label>
+          <select id="f_status">
+            <option>Not Started</option><option>Started</option><option>Quotations Received</option>
+            <option>For Review</option><option>Pending</option><option>Completed</option>
+          </select>
+        </div>
+      </div>
+      <div class="field"><label>Remarks</label><textarea id="f_remarks"></textarea></div>
+      <div class="drawer-actions">
+        <button type="button" class="btn ghost" id="cancelForm">Cancel</button>
+        <button type="submit" class="btn primary">Save</button>
+      </div>
+    </form>`;
+  if(t){
+    document.getElementById('f_task').value = t.task||'';
+    document.getElementById('f_start').value = t.startDate||'';
+    document.getElementById('f_target').value = t.targetDate||'';
+    document.getElementById('f_status').value = t.status||'Not Started';
+    document.getElementById('f_remarks').value = t.remarks||'';
+  }
+  document.getElementById('cancelForm').addEventListener('click', ()=>{ if(id) openTaskView(id); else closeDrawer(); });
+  document.getElementById('taskForm').addEventListener('submit', async e=>{
+    e.preventDefault();
+    const data = {
+      task: document.getElementById('f_task').value.trim(),
+      startDate: document.getElementById('f_start').value.trim(),
+      targetDate: document.getElementById('f_target').value.trim(),
+      owner: getCheckedNames('ownerChecks'),
+      status: document.getElementById('f_status').value,
+      remarks: document.getElementById('f_remarks').value.trim(),
+      editedBy: editorName || 'Unknown',
+      editedAt: new Date().toISOString(),
+    };
+    if(!data.task) return;
+    const docId = id || uid('tk');
+    try{ await TASKS.doc(docId).set({id:docId, ...data}); await logActivity(id?'updated':'created','Task', data.task); await touchLastUpdated(); closeDrawer(); }
+    catch(err){ alert("Couldn't save — check your connection.\n\n"+err.message); }
+  });
+  openDrawer();
+}
+
+/* ---------- TRAVELERS (readiness roster) ---------- */
+function renderTravelers(){
+  const grid = document.getElementById('travelersGrid');
+  const names = getAllTravelerNames();
+  if(names.length === 0){
+    grid.innerHTML = `<div class="traveler-empty">No travelers added yet. Click "+ Add traveler" to start tracking someone's visa, flight, and hotel status together.</div>`;
+    return;
+  }
+  grid.innerHTML = names.sort().map(name=>{
+    const r = travelerReadiness(name);
+    return `<div class="traveler-card ${r.allOk?'all-ready':''}" data-name="${escapeHtml(name)}">
+      <div class="traveler-name">${escapeHtml(name)}</div>
+      <div class="pill-row">
+        <div class="pill ${r.visaOk?'ok':'no'}">Visa</div>
+        <div class="pill ${r.flightOk?'ok':'no'}">Flight</div>
+        <div class="pill ${r.hotelOk?'ok':'no'}">Hotel</div>
+      </div>
+    </div>`;
+  }).join('');
+  grid.querySelectorAll('.traveler-card').forEach(card=>{
+    card.addEventListener('click', ()=>openTravelerView(card.getAttribute('data-name')));
+  });
+}
+
+function openTravelerView(name){
+  const r = travelerReadiness(name);
+  document.getElementById('drawerTitle').textContent = name;
+  function block(label, ok, record, fields, kind){
+    if(!record){
+      return `<div class="view-item">
+        <div class="k">${label}</div>
+        <div class="v" style="color:var(--slate);">Not added yet.</div>
+        ${editMode ? `<button type="button" class="btn ghost small" data-add-kind="${kind}" style="margin-top:6px;">+ Add ${label.toLowerCase()}</button>` : ''}
+      </div>`;
+    }
+    const rows = fields.map(([lbl,val])=>`<div style="font-size:12.5px;margin-bottom:2px;"><span style="color:var(--slate);">${lbl}:</span> ${escapeHtml(String(val||'—'))}</div>`).join('');
+    const editedLine = record.editedBy ? `<div style="font-size:11.5px;color:var(--slate);margin-top:6px;">Last updated by <strong>${escapeHtml(record.editedBy)}</strong>${record.editedAt ? ` · ${fmtDateTime(record.editedAt)}` : ''}</div>` : '';
+    return `<div class="view-item">
+      <div class="k">${label} ${ok?'✓':''}</div>
+      <div class="v">${rows}</div>
+      ${editedLine}
+      ${editMode ? `<button type="button" class="btn ghost small" data-edit-kind="${kind}" style="margin-top:6px;">Edit ${label.toLowerCase()}</button>` : ''}
+    </div>`;
+  }
+  document.getElementById('drawerBody').innerHTML = `
+    ${block('Visa', r.visaOk, r.v, [['Nationality', r.v?.nationality],['Required', r.v?.visaRequired],['Status', r.v?.status],['Application', r.v?.application],['Approval', r.v?.approval]], 'visa')}
+    ${block('Flight', r.flightOk, r.f, [['Departure', r.f?.departure],['Return', r.f?.returnFlight],['PNR', r.f?.pnr],['Seat', r.f?.seat]], 'flight')}
+    ${block('Hotel', r.hotelOk, r.h, [['Hotel', r.h?.hotel],['Check-in', r.h?.checkin],['Check-out', r.h?.checkout],['Room', r.h?.room]], 'hotel')}
+    ${editMode ? `<div class="drawer-actions">
+      <button class="btn ghost" id="removeTravelerBtn" style="color:var(--rust);">Remove traveler</button>
+    </div>` : ''}
+  `;
+  if(editMode){
+    document.querySelectorAll('[data-add-kind]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const kind = btn.getAttribute('data-add-kind');
+        if(kind==='visa') openVisaForm(null, name);
+        if(kind==='flight') openFlightForm(null, name);
+        if(kind==='hotel') openHotelForm(null, name);
+      });
+    });
+    document.querySelectorAll('[data-edit-kind]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const kind = btn.getAttribute('data-edit-kind');
+        if(kind==='visa') openVisaForm(r.v.id);
+        if(kind==='flight') openFlightForm(r.f.id);
+        if(kind==='hotel') openHotelForm(r.h.id);
+      });
+    });
+    document.getElementById('removeTravelerBtn').addEventListener('click', async ()=>{
+      if(!confirm(`Remove ${name} entirely — including their visa, flight, and hotel records? This can't be undone.`)) return;
+      try{
+        const rosterEntry = travelers.find(t=>t.name===name);
+        const jobs = [];
+        if(rosterEntry) jobs.push(TRAVELERS.doc(rosterEntry.id).delete());
+        if(r.v) jobs.push(VISAS.doc(r.v.id).delete());
+        if(r.f) jobs.push(FLIGHTS.doc(r.f.id).delete());
+        if(r.h) jobs.push(HOTELS.doc(r.h.id).delete());
+        await Promise.all(jobs);
+        await logActivity('deleted','Traveler', name);
+        await touchLastUpdated();
+        closeDrawer();
+      }catch(err){
+        alert("Couldn't remove — check your connection and try again.\n\n"+err.message);
+      }
+    });
+  }
+  openDrawer();
+}
+
+function openAddTravelerForm(){
+  document.getElementById('drawerTitle').textContent = 'Add traveler';
+  document.getElementById('drawerBody').innerHTML = `
+    <form id="genForm">
+      <div class="field"><label>Name</label><input type="text" id="f_name" required></div>
+      <div class="drawer-actions">
+        <button type="button" class="btn ghost" id="cancelForm">Cancel</button>
+        <button type="submit" class="btn primary">Add</button>
+      </div>
+    </form>`;
+  document.getElementById('cancelForm').addEventListener('click', closeDrawer);
+  document.getElementById('genForm').addEventListener('submit', async e=>{
+    e.preventDefault();
+    const name = document.getElementById('f_name').value.trim();
+    if(!name) return;
+    if(getAllTravelerNames().some(n=>n.toLowerCase()===name.toLowerCase())){
+      alert(`${name} is already tracked.`);
+      return;
+    }
+    const docId = uid('tv');
+    try{ await TRAVELERS.doc(docId).set({id:docId, name}); await logActivity('created','Traveler', name); await touchLastUpdated(); closeDrawer(); }
+    catch(err){ alert("Couldn't add traveler — check your connection.\n\n"+err.message); }
+  });
+  openDrawer();
+}
+
+/* ---------- VISAS ---------- */
+function renderVisas(){
+  const tbody = document.getElementById('visasTbody');
+  if(visas.length===0){ tbody.innerHTML = `<tr class="empty-row"><td colspan="6">No travelers added yet.</td></tr>`; return; }
+  tbody.innerHTML = visas.map(v=>`
+    <tr data-id="${v.id}">
+      <td style="font-weight:600;">${escapeHtml(v.name)}</td>
+      <td>${escapeHtml(v.nationality)}</td>
+      <td>${escapeHtml(v.visaRequired)}</td>
+      <td class="date-cell">${fmtDate(v.application)}</td>
+      <td class="date-cell">${fmtDate(v.approval)}</td>
+      <td><span class="status-tag ${statusClass(v.status)}">${escapeHtml(v.status)||'—'}</span></td>
+    </tr>`).join('');
+  tbody.querySelectorAll('tr[data-id]').forEach(tr=>tr.addEventListener('click', ()=>openGenericView('visa', tr.getAttribute('data-id'))));
+}
+function openVisaForm(id, prefillName){
+  const v = id ? visas.find(x=>x.id===id) : null;
+  document.getElementById('drawerTitle').textContent = id ? 'Edit traveler' : 'Add traveler';
+  document.getElementById('drawerBody').innerHTML = `
+    <form id="genForm">
+      <div class="field"><label>Name</label><input type="text" id="f_name" required></div>
+      <div class="row2">
+        <div class="field"><label>Nationality</label><input type="text" id="f_nat"></div>
+        <div class="field"><label>Visa required</label><input type="text" id="f_req" placeholder="e.g. Yes / No"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Application date</label><input type="text" id="f_app" placeholder="YYYY-MM-DD"></div>
+        <div class="field"><label>Approval date</label><input type="text" id="f_appr" placeholder="YYYY-MM-DD"></div>
+      </div>
+      <div class="field"><label>Status</label>
+        <select id="f_status2">
+          <option>Not Started</option><option>Started</option><option>Submitted</option><option>Approved</option><option>Rejected</option>
+        </select>
+      </div>
+      <div class="field"><label>Remarks</label><textarea id="f_rem"></textarea></div>
+      <div class="drawer-actions">
+        <button type="button" class="btn ghost" id="cancelForm">Cancel</button>
+        <button type="submit" class="btn primary">Save</button>
+      </div>
+    </form>`;
+  if(v){
+    document.getElementById('f_name').value=v.name||'';
+    document.getElementById('f_nat').value=v.nationality||'';
+    document.getElementById('f_req').value=v.visaRequired||'';
+    document.getElementById('f_app').value=v.application||'';
+    document.getElementById('f_appr').value=v.approval||'';
+    document.getElementById('f_status2').value=v.status||'Not Started';
+    document.getElementById('f_rem').value=v.remarks||'';
+  } else if(prefillName){
+    document.getElementById('f_name').value = prefillName;
+  }
+  document.getElementById('cancelForm').addEventListener('click', closeDrawer);
+  document.getElementById('genForm').addEventListener('submit', async e=>{
+    e.preventDefault();
+    const data = {
+      name: document.getElementById('f_name').value.trim(),
+      nationality: document.getElementById('f_nat').value.trim(),
+      visaRequired: document.getElementById('f_req').value.trim(),
+      application: document.getElementById('f_app').value.trim(),
+      approval: document.getElementById('f_appr').value.trim(),
+      status: document.getElementById('f_status2').value,
+      remarks: document.getElementById('f_rem').value.trim(),
+      editedBy: editorName || 'Unknown',
+      editedAt: new Date().toISOString(),
+    };
+    if(!data.name) return;
+    const docId = id || uid('vs');
+    try{ await VISAS.doc(docId).set({id:docId, ...data}); await logActivity(id?'updated':'created','Visa', data.name); await touchLastUpdated(); closeDrawer(); }
+    catch(err){ alert("Couldn't save — check your connection.\n\n"+err.message); }
+  });
+  openDrawer();
+}
+
+/* ---------- FLIGHTS ---------- */
+function renderFlights(){
+  const tbody = document.getElementById('flightsTbody');
+  if(flights.length===0){ tbody.innerHTML = `<tr class="empty-row"><td colspan="5">No flights added yet.</td></tr>`; return; }
+  tbody.innerHTML = flights.map(f=>`
+    <tr data-id="${f.id}">
+      <td style="font-weight:600;">${escapeHtml(f.name)}</td>
+      <td class="date-cell">${escapeHtml(f.departure)}</td>
+      <td class="date-cell">${escapeHtml(f.returnFlight)}</td>
+      <td class="mono">${escapeHtml(f.pnr)}</td>
+      <td>${escapeHtml(f.seat)}</td>
+    </tr>`).join('');
+  tbody.querySelectorAll('tr[data-id]').forEach(tr=>tr.addEventListener('click', ()=>openGenericView('flight', tr.getAttribute('data-id'))));
+}
+function openFlightForm(id, prefillName){
+  const f = id ? flights.find(x=>x.id===id) : null;
+  document.getElementById('drawerTitle').textContent = id ? 'Edit flight' : 'Add flight';
+  document.getElementById('drawerBody').innerHTML = `
+    <form id="genForm">
+      <div class="field"><label>Name</label><input type="text" id="f_name" required></div>
+      <div class="row2">
+        <div class="field"><label>Departure</label><input type="text" id="f_dep" placeholder="Flight no. / date / time"></div>
+        <div class="field"><label>Return</label><input type="text" id="f_ret" placeholder="Flight no. / date / time"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>PNR</label><input type="text" id="f_pnr"></div>
+        <div class="field"><label>Seat</label><input type="text" id="f_seat"></div>
+      </div>
+      <div class="field"><label>Remarks</label><textarea id="f_rem"></textarea></div>
+      <div class="drawer-actions">
+        <button type="button" class="btn ghost" id="cancelForm">Cancel</button>
+        <button type="submit" class="btn primary">Save</button>
+      </div>
+    </form>`;
+  if(f){
+    document.getElementById('f_name').value=f.name||'';
+    document.getElementById('f_dep').value=f.departure||'';
+    document.getElementById('f_ret').value=f.returnFlight||'';
+    document.getElementById('f_pnr').value=f.pnr||'';
+    document.getElementById('f_seat').value=f.seat||'';
+    document.getElementById('f_rem').value=f.remarks||'';
+  } else if(prefillName){
+    document.getElementById('f_name').value = prefillName;
+  }
+  document.getElementById('cancelForm').addEventListener('click', closeDrawer);
+  document.getElementById('genForm').addEventListener('submit', async e=>{
+    e.preventDefault();
+    const data = {
+      name: document.getElementById('f_name').value.trim(),
+      departure: document.getElementById('f_dep').value.trim(),
+      returnFlight: document.getElementById('f_ret').value.trim(),
+      pnr: document.getElementById('f_pnr').value.trim(),
+      seat: document.getElementById('f_seat').value.trim(),
+      remarks: document.getElementById('f_rem').value.trim(),
+      editedBy: editorName || 'Unknown',
+      editedAt: new Date().toISOString(),
+    };
+    if(!data.name) return;
+    const docId = id || uid('fl');
+    try{ await FLIGHTS.doc(docId).set({id:docId, ...data}); await logActivity(id?'updated':'created','Flight', data.name); await touchLastUpdated(); closeDrawer(); }
+    catch(err){ alert("Couldn't save — check your connection.\n\n"+err.message); }
+  });
+  openDrawer();
+}
+
+/* ---------- HOTELS ---------- */
+function renderHotels(){
+  const tbody = document.getElementById('hotelsTbody');
+  if(hotels.length===0){ tbody.innerHTML = `<tr class="empty-row"><td colspan="6">No guests added yet.</td></tr>`; return; }
+  tbody.innerHTML = hotels.map(h=>`
+    <tr data-id="${h.id}">
+      <td style="font-weight:600;">${escapeHtml(h.guest)}</td>
+      <td>${escapeHtml(h.hotel)}</td>
+      <td class="date-cell">${escapeHtml(h.checkin)}</td>
+      <td class="date-cell">${escapeHtml(h.checkout)}</td>
+      <td>${escapeHtml(h.room)}</td>
+      <td class="mono">${escapeHtml(h.confirmation)}</td>
+    </tr>`).join('');
+  tbody.querySelectorAll('tr[data-id]').forEach(tr=>tr.addEventListener('click', ()=>openGenericView('hotel', tr.getAttribute('data-id'))));
+}
+function openHotelForm(id, prefillName){
+  const h = id ? hotels.find(x=>x.id===id) : null;
+  document.getElementById('drawerTitle').textContent = id ? 'Edit guest' : 'Add guest';
+  document.getElementById('drawerBody').innerHTML = `
+    <form id="genForm">
+      <div class="field"><label>Guest</label><input type="text" id="f_guest" required></div>
+      <div class="field"><label>Hotel</label><input type="text" id="f_hotel"></div>
+      <div class="row2">
+        <div class="field"><label>Check-in</label><input type="text" id="f_ci" placeholder="YYYY-MM-DD"></div>
+        <div class="field"><label>Check-out</label><input type="text" id="f_co" placeholder="YYYY-MM-DD"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Room</label><input type="text" id="f_room"></div>
+        <div class="field"><label>Confirmation</label><input type="text" id="f_conf"></div>
+      </div>
+      <div class="field"><label>Remarks</label><textarea id="f_rem"></textarea></div>
+      <div class="drawer-actions">
+        <button type="button" class="btn ghost" id="cancelForm">Cancel</button>
+        <button type="submit" class="btn primary">Save</button>
+      </div>
+    </form>`;
+  if(h){
+    document.getElementById('f_guest').value=h.guest||'';
+    document.getElementById('f_hotel').value=h.hotel||'';
+    document.getElementById('f_ci').value=h.checkin||'';
+    document.getElementById('f_co').value=h.checkout||'';
+    document.getElementById('f_room').value=h.room||'';
+    document.getElementById('f_conf').value=h.confirmation||'';
+    document.getElementById('f_rem').value=h.remarks||'';
+  } else if(prefillName){
+    document.getElementById('f_guest').value = prefillName;
+  }
+  document.getElementById('cancelForm').addEventListener('click', closeDrawer);
+  document.getElementById('genForm').addEventListener('submit', async e=>{
+    e.preventDefault();
+    const data = {
+      guest: document.getElementById('f_guest').value.trim(),
+      hotel: document.getElementById('f_hotel').value.trim(),
+      checkin: document.getElementById('f_ci').value.trim(),
+      checkout: document.getElementById('f_co').value.trim(),
+      room: document.getElementById('f_room').value.trim(),
+      confirmation: document.getElementById('f_conf').value.trim(),
+      remarks: document.getElementById('f_rem').value.trim(),
+      editedBy: editorName || 'Unknown',
+      editedAt: new Date().toISOString(),
+    };
+    if(!data.guest) return;
+    const docId = id || uid('ht');
+    try{ await HOTELS.doc(docId).set({id:docId, ...data}); await logActivity(id?'updated':'created','Hotel', data.guest); await touchLastUpdated(); closeDrawer(); }
+    catch(err){ alert("Couldn't save — check your connection.\n\n"+err.message); }
+  });
+  openDrawer();
+}
+
+/* ---------- EVENT PROGRAM ---------- */
+function renderProgram(){
+  const wrap = document.getElementById('programDays');
+  if(program.length===0){ wrap.innerHTML = `<div class="traveler-empty">No activities added yet.</div>`; return; }
+  const groups = {};
+  const order = [];
+  program.forEach(p=>{
+    const key = p.date || 'Unscheduled';
+    if(!groups[key]){ groups[key] = []; order.push(key); }
+    groups[key].push(p);
+  });
+  wrap.innerHTML = order.map(day=>`
+    <div class="day-card">
+      <div class="day-card-head">${escapeHtml(day)}</div>
+      <div class="day-card-body">
+        ${groups[day].map(p=>`
+          <div class="day-item" data-id="${p.id}">
+            <span class="dot"></span>
+            <span class="act">${escapeHtml(p.activity)}</span>
+            <span class="resp">${escapeHtml(p.responsible) || ''}</span>
+          </div>`).join('')}
+      </div>
+    </div>`).join('');
+  wrap.querySelectorAll('.day-item').forEach(el=>el.addEventListener('click', ()=>openGenericView('program', el.getAttribute('data-id'))));
+}
+function openProgramForm(id){
+  const p = id ? program.find(x=>x.id===id) : null;
+  document.getElementById('drawerTitle').textContent = id ? 'Edit activity' : 'Add activity';
+  document.getElementById('drawerBody').innerHTML = `
+    <form id="genForm">
+      <div class="field"><label>Date</label><input type="text" id="f_date" placeholder="e.g. 23 Aug" required></div>
+      <div class="field"><label>Activity</label><input type="text" id="f_act" required></div>
+      <div class="field"><label>Responsible</label>${nameCheckboxes('respChecks', p ? p.responsible : '')}</div>
+      <div class="field"><label>Remarks</label><textarea id="f_rem"></textarea></div>
+      <div class="drawer-actions">
+        <button type="button" class="btn ghost" id="cancelForm">Cancel</button>
+        <button type="submit" class="btn primary">Save</button>
+      </div>
+    </form>`;
+  if(p){
+    document.getElementById('f_date').value=p.date||'';
+    document.getElementById('f_act').value=p.activity||'';
+    document.getElementById('f_rem').value=p.remarks||'';
+  }
+  document.getElementById('cancelForm').addEventListener('click', ()=>{ if(id) openGenericView('program', id); else closeDrawer(); });
+  document.getElementById('genForm').addEventListener('submit', async e=>{
+    e.preventDefault();
+    const data = {
+      date: document.getElementById('f_date').value.trim(),
+      activity: document.getElementById('f_act').value.trim(),
+      responsible: getCheckedNames('respChecks'),
+      remarks: document.getElementById('f_rem').value.trim(),
+      editedBy: editorName || 'Unknown',
+      editedAt: new Date().toISOString(),
+    };
+    if(!data.activity) return;
+    const docId = id || uid('pg');
+    try{ await PROGRAM.doc(docId).set({id:docId, ...data}); await logActivity(id?'updated':'created','Itinerary activity', data.activity); await touchLastUpdated(); closeDrawer(); }
+    catch(err){ alert("Couldn't save — check your connection.\n\n"+err.message); }
+  });
+  openDrawer();
+}
+
+/* ---------- ACTIVITY LOG ---------- */
+let activityActorFilter = 'all';
+function renderActivityLog(){
+  const tbody = document.getElementById('activityTbody');
+  if(!tbody) return;
+  let list = activityLog.slice();
+  if(activityActorFilter !== 'all') list = list.filter(l=>l.actor===activityActorFilter);
+  list.sort((a,b)=>(b.timestamp||'').localeCompare(a.timestamp||''));
+  list = list.slice(0, 200);
+  if(list.length===0){ tbody.innerHTML = `<tr class="empty-row"><td colspan="4">No activity logged yet.</td></tr>`; return; }
+  tbody.innerHTML = list.map(l=>`
+    <tr>
+      <td class="date-cell">${fmtDateTime(l.timestamp) || '—'}</td>
+      <td style="font-weight:600;">${escapeHtml(l.actor)}</td>
+      <td><span class="action-tag ${l.action}">${l.action}</span> ${escapeHtml(l.entityType)}</td>
+      <td>${escapeHtml(l.entityLabel) || '—'}</td>
+    </tr>`).join('');
+}
+const activityFiltersEl = document.getElementById('activityFilters');
+if(activityFiltersEl){
+  activityFiltersEl.querySelectorAll('.chip').forEach(chip=>{
+    chip.addEventListener('click', ()=>{
+      activityFiltersEl.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+      chip.classList.add('active');
+      activityActorFilter = chip.getAttribute('data-actor');
+      renderActivityLog();
+    });
+  });
+}
+
+/* ---------- BUDGET ---------- */
+function convertFromAED(aedAmount, toCur){
+  if(toCur === 'AED' || !toCur) return aedAmount;
+  const rate = (meta && meta.fxRates && meta.fxRates[toCur]) || (SEED_META.fxRates[toCur]);
+  return aedAmount / rate;
+}
+function currencyConverterHTML(id){
+  return `
+    <div class="fx-convert" id="${id}">
+      <span class="fx-label">or type in</span>
+      <select class="fx-convert-cur">
+        <option value="USD">USD</option>
+        <option value="EUR">EUR</option>
+      </select>
+      <input type="number" class="fx-convert-amt" step="any" placeholder="amount">
+      <button type="button" class="btn ghost small fx-convert-use">Use → AED <span class="fx-convert-result">0.00</span></button>
+    </div>`;
+}
+function wireCurrencyConverter(wrapId, targetInputId){
+  const wrap = document.getElementById(wrapId);
+  if(!wrap || !meta.fxRates) return;
+  const curSel = wrap.querySelector('.fx-convert-cur');
+  const amtInput = wrap.querySelector('.fx-convert-amt');
+  const resultSpan = wrap.querySelector('.fx-convert-result');
+  const useBtn = wrap.querySelector('.fx-convert-use');
+  function recompute(){
+    const amt = parseFloat(amtInput.value)||0;
+    const rate = meta.fxRates[curSel.value] || 1;
+    resultSpan.textContent = (Math.round(amt*rate*100)/100).toFixed(2);
+  }
+  amtInput.addEventListener('input', recompute);
+  curSel.addEventListener('change', recompute);
+  useBtn.addEventListener('click', ()=>{
+    recompute();
+    document.getElementById(targetInputId).value = resultSpan.textContent;
+  });
+  recompute();
+}
+
+function fmtMoney(n){
+  if(n === null || n === undefined || isNaN(n)) return '—';
+  const converted = convertFromAED(Number(n), displayCurrency);
+  const rounded = Math.round(converted * 100) / 100;
+  return CURRENCY_SYMBOLS[displayCurrency] + rounded.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function categoryActual(catName){
+  return budgetItems.filter(i=>i.category===catName).reduce((sum,i)=>sum + (Number(i.unitCost)||0)*(Number(i.qty)||0), 0);
+}
+function renderBudget(){
+  if(!meta) return;
+
+  document.querySelectorAll('#currencyChips .chip').forEach(c=>c.classList.toggle('active', c.getAttribute('data-cur')===displayCurrency));
+  const fxNoteEl = document.getElementById('fxNote');
+  if(fxNoteEl && meta.fxRates){
+    fxNoteEl.textContent = displayCurrency === 'AED'
+      ? `Rates: 1 USD = ${meta.fxRates.USD} AED · 1 EUR = ${meta.fxRates.EUR} AED`
+      : `Converted from AED at 1 ${displayCurrency} = ${meta.fxRates[displayCurrency]} AED. All figures are stored in AED — this is a view-only conversion.`;
+  }
+
+  const attendees = meta.attendeeCount || 0;
+  document.getElementById('budgetAttendees').textContent = attendees || '—';
+  const envLow = attendees * (meta.perPersonLow||0);
+  const envHigh = attendees * (meta.perPersonHigh||0);
+  document.getElementById('budgetEnvelope').textContent = attendees ? `${fmtMoney(envLow)}–${fmtMoney(envHigh)}` : '—';
+
+  let totalBudgeted = 0, totalActual = 0;
+  const catRows = budgetCats.map(c=>{
+    const actual = categoryActual(c.name);
+    totalBudgeted += Number(c.budgeted)||0;
+    totalActual += actual;
+    const variance = actual - (Number(c.budgeted)||0);
+    const perPerson = attendees ? actual/attendees : 0;
+    const status = !c.budgeted ? (actual>0 ? 'Unbudgeted spend' : 'No budget set') : (variance>0 ? 'Over budget' : 'On budget');
+    return {c, actual, variance, perPerson, status};
+  });
+
+  document.getElementById('budgetTotalBudgeted').textContent = fmtMoney(totalBudgeted);
+  document.getElementById('budgetTotalActual').textContent = fmtMoney(totalActual);
+
+  const noteEl = document.getElementById('budgetEnvelopeNote');
+  if(attendees && (envLow||envHigh)){
+    const vsLabel = totalActual < envLow ? 'Under low envelope' : (totalActual > envHigh ? 'Over high envelope' : 'Within envelope');
+    noteEl.textContent = `Total actual vs. per-person envelope: ${vsLabel}`;
+  } else { noteEl.textContent = ''; }
+
+  const catsTbody = document.getElementById('budgetCatsTbody');
+  if(catRows.length===0){ catsTbody.innerHTML = `<tr class="empty-row"><td colspan="6">No categories yet.</td></tr>`; }
+  else {
+    catsTbody.innerHTML = catRows.map(r=>`
+      <tr data-id="${r.c.id}">
+        <td style="font-weight:600;">${escapeHtml(r.c.name)}</td>
+        <td class="money">${fmtMoney(r.c.budgeted)}</td>
+        <td class="money">${fmtMoney(r.actual)}</td>
+        <td class="money ${r.variance>0?'over':(r.variance<0?'under':'')}">${r.variance>=0?'+':''}${fmtMoney(r.variance)}</td>
+        <td class="money">${fmtMoney(r.perPerson)}</td>
+        <td><span class="status-tag ${r.status==='Over budget'?'wait':(r.status==='On budget'?'done':'progress')}" style="${r.status==='Over budget'?'background:var(--rust-soft);color:var(--rust);':''}">${r.status}</span></td>
+      </tr>`).join('');
+    catsTbody.querySelectorAll('tr[data-id]').forEach(tr=>tr.addEventListener('click', ()=>openBudgetCatForm(tr.getAttribute('data-id'))));
+  }
+
+  const itemsTbody = document.getElementById('budgetItemsTbody');
+  if(budgetItems.length===0){ itemsTbody.innerHTML = `<tr class="empty-row"><td colspan="7">No line items yet.</td></tr>`; }
+  else {
+    itemsTbody.innerHTML = budgetItems.map(i=>`
+      <tr data-id="${i.id}">
+        <td style="font-weight:600;">${escapeHtml(i.vendor)}</td>
+        <td>${escapeHtml(i.category)}</td>
+        <td>${escapeHtml(i.description)}</td>
+        <td class="money">${fmtMoney(i.unitCost)}</td>
+        <td>${escapeHtml(String(i.qty))}</td>
+        <td>${escapeHtml(i.costType)}</td>
+        <td class="money">${fmtMoney((Number(i.unitCost)||0)*(Number(i.qty)||0))}</td>
+      </tr>`).join('');
+    itemsTbody.querySelectorAll('tr[data-id]').forEach(tr=>tr.addEventListener('click', ()=>openBudgetItemView(tr.getAttribute('data-id'))));
+  }
+
+  const paysTbody = document.getElementById('budgetPaymentsTbody');
+  if(budgetPayments.length===0){ paysTbody.innerHTML = `<tr class="empty-row"><td colspan="7">No payments logged yet.</td></tr>`; }
+  else {
+    paysTbody.innerHTML = budgetPayments.map(p=>`
+      <tr data-id="${p.id}">
+        <td style="font-weight:600;">${escapeHtml(p.vendor)}</td>
+        <td>${escapeHtml(p.category)}</td>
+        <td class="money">${fmtMoney(p.deposit)}</td>
+        <td class="date-cell">${escapeHtml(p.depositDue)||'—'}</td>
+        <td class="money">${p.balanceDue?fmtMoney(p.balanceDue):'—'}</td>
+        <td class="date-cell">${escapeHtml(p.balanceDueDate)||'—'}</td>
+        <td>${escapeHtml(p.status)||'—'}</td>
+      </tr>`).join('');
+    paysTbody.querySelectorAll('tr[data-id]').forEach(tr=>tr.addEventListener('click', ()=>openBudgetPaymentView(tr.getAttribute('data-id'))));
+  }
+}
+
+function openFxRatesForm(){
+  document.getElementById('drawerTitle').textContent = 'Edit FX rates';
+  document.getElementById('drawerBody').innerHTML = `
+    <div class="section-sub" style="margin-bottom:14px;">All amounts in this tracker are stored in AED. These rates control what shows when you switch the view to USD or EUR — they don't change any stored data.</div>
+    <form id="genForm">
+      <div class="field"><label>1 USD = how many AED?</label><input type="number" id="f_usd" min="0" step="0.0001"></div>
+      <div class="field"><label>1 EUR = how many AED?</label><input type="number" id="f_eur" min="0" step="0.0001"></div>
+      <div class="drawer-actions">
+        <button type="button" class="btn ghost" id="cancelForm">Cancel</button>
+        <button type="submit" class="btn primary">Save</button>
+      </div>
+    </form>`;
+  document.getElementById('f_usd').value = meta.fxRates.USD;
+  document.getElementById('f_eur').value = meta.fxRates.EUR;
+  document.getElementById('cancelForm').addEventListener('click', closeDrawer);
+  document.getElementById('genForm').addEventListener('submit', async e=>{
+    e.preventDefault();
+    const usd = parseFloat(document.getElementById('f_usd').value);
+    const eur = parseFloat(document.getElementById('f_eur').value);
+    if(!usd || !eur) return;
+    try{
+      await META_DOC.set({...meta, fxRates: {USD: usd, EUR: eur}});
+      await logActivity('updated','FX rates', `1 USD = ${usd} AED, 1 EUR = ${eur} AED`);
+      await touchLastUpdated();
+      closeDrawer();
+    }catch(err){ alert("Couldn't save — check your connection.\n\n"+err.message); }
+  });
+  openDrawer();
+}
+
+function openAssumptionsForm(){
+  document.getElementById('drawerTitle').textContent = 'Edit budget assumptions';
+  document.getElementById('drawerBody').innerHTML = `
+    <form id="genForm">
+      <div class="field"><label>Attendee count (planning figure)</label><input type="number" id="f_att" min="0"></div>
+      <div class="row2">
+        <div class="field"><label>Per-person budget — low (AED)</label><input type="number" id="f_low" min="0"></div>
+        <div class="field"><label>Per-person budget — high (AED)</label><input type="number" id="f_high" min="0"></div>
+      </div>
+      <div class="drawer-actions">
+        <button type="button" class="btn ghost" id="cancelForm">Cancel</button>
+        <button type="submit" class="btn primary">Save</button>
+      </div>
+    </form>`;
+  document.getElementById('f_att').value = meta.attendeeCount||0;
+  document.getElementById('f_low').value = meta.perPersonLow||0;
+  document.getElementById('f_high').value = meta.perPersonHigh||0;
+  document.getElementById('cancelForm').addEventListener('click', closeDrawer);
+  document.getElementById('genForm').addEventListener('submit', async e=>{
+    e.preventDefault();
+    try{
+      await META_DOC.set({
+        ...meta,
+        attendeeCount: parseFloat(document.getElementById('f_att').value)||0,
+        perPersonLow: parseFloat(document.getElementById('f_low').value)||0,
+        perPersonHigh: parseFloat(document.getElementById('f_high').value)||0,
+      });
+      await touchLastUpdated();
+      await logActivity('updated','Budget assumptions', 'Attendee count / per-person envelope');
+      closeDrawer();
+    }catch(err){ alert("Couldn't save — check your connection.\n\n"+err.message); }
+  });
+  openDrawer();
+}
+
+function openBudgetCatForm(id){
+  const c = budgetCats.find(x=>x.id===id);
+  if(!c) return;
+  document.getElementById('drawerTitle').textContent = c.name;
+  const actual = categoryActual(c.name);
+  document.getElementById('drawerBody').innerHTML = `
+    <div class="view-item"><div class="k">Actual / quoted (from line items)</div><div class="v">${fmtMoney(actual)}</div></div>
+    ${editMode ? `
+    <form id="genForm">
+      <div class="field"><label>Budgeted (AED)</label><input type="number" id="f_budgeted" min="0" step="any" value="${c.budgeted||0}"></div>${currencyConverterHTML('fxConvBudgeted')}
+      <div class="field"><label>Notes</label><textarea id="f_notes">${escapeHtml(c.notes)}</textarea></div>
+      <div class="drawer-actions">
+        <button type="button" class="btn ghost" id="deleteCatBtn" style="color:var(--rust);">Delete category</button>
+        <button type="submit" class="btn primary">Save</button>
+      </div>
+    </form>` : `<div class="view-item"><div class="k">Notes</div><div class="v">${escapeHtml(c.notes) || '—'}</div></div>`}
+    ${c.editedBy ? `<div class="view-item"><div class="k">Last edited</div><div class="v" style="color:var(--slate);font-size:12px;">${escapeHtml(c.editedBy)}${c.editedAt ? ` · ${fmtDateTime(c.editedAt)}` : ''}</div></div>` : ''}
+  `;
+  if(editMode){
+    wireCurrencyConverter('fxConvBudgeted', 'f_budgeted');
+    document.getElementById('deleteCatBtn').addEventListener('click', async ()=>{
+      if(confirm(`Delete category "${c.name}"? Line items already using this category will no longer roll up anywhere.`)){
+        try{ await BUDGET_CATS.doc(id).delete(); await logActivity('deleted','Budget category', c.name); await touchLastUpdated(); closeDrawer(); }
+        catch(err){ alert("Couldn't delete — check your connection.\n\n"+err.message); }
+      }
+    });
+    document.getElementById('genForm').addEventListener('submit', async e=>{
+      e.preventDefault();
+      const data = {
+        budgeted: parseFloat(document.getElementById('f_budgeted').value)||0,
+        notes: document.getElementById('f_notes').value.trim(),
+        editedBy: editorName || 'Unknown',
+        editedAt: new Date().toISOString(),
+      };
+      try{ await BUDGET_CATS.doc(id).set({...c, ...data}); await logActivity('updated','Budget category', c.name); await touchLastUpdated(); closeDrawer(); }
+      catch(err){ alert("Couldn't save — check your connection.\n\n"+err.message); }
+    });
+  }
+  openDrawer();
+}
+
+function openBudgetItemView(id){
+  const i = budgetItems.find(x=>x.id===id);
+  if(!i) return;
+  document.getElementById('drawerTitle').textContent = i.vendor;
+  const total = (Number(i.unitCost)||0)*(Number(i.qty)||0);
+  document.getElementById('drawerBody').innerHTML = `
+    <div class="view-item"><div class="k">Category</div><div class="v">${escapeHtml(i.category)}</div></div>
+    <div class="view-item"><div class="k">Description</div><div class="v">${escapeHtml(i.description) || '—'}</div></div>
+    <div class="view-item"><div class="k">Unit cost</div><div class="v">${fmtMoney(i.unitCost)}</div></div>
+    <div class="view-item"><div class="k">Qty / headcount</div><div class="v">${escapeHtml(String(i.qty))}</div></div>
+    <div class="view-item"><div class="k">Cost type</div><div class="v">${escapeHtml(i.costType)}</div></div>
+    <div class="view-item"><div class="k">Total</div><div class="v">${fmtMoney(total)}</div></div>
+    <div class="view-item"><div class="k">Notes</div><div class="v">${escapeHtml(i.notes) || '—'}</div></div>
+    ${i.editedBy ? `<div class="view-item"><div class="k">Last edited</div><div class="v" style="color:var(--slate);font-size:12px;">${escapeHtml(i.editedBy)}${i.editedAt ? ` · ${fmtDateTime(i.editedAt)}` : ''}</div></div>` : ''}
+    ${editMode ? `<div class="drawer-actions">
+      <button class="btn ghost" id="editThis">Edit</button>
+      <button class="btn ghost" id="deleteThis" style="color:var(--rust);">Delete</button>
+    </div>` : ''}
+  `;
+  if(editMode){
+    document.getElementById('editThis').addEventListener('click', ()=>openBudgetItemForm(id));
+    document.getElementById('deleteThis').addEventListener('click', async ()=>{
+      if(confirm(`Delete this line item from ${i.vendor}?`)){
+        try{ await BUDGET_ITEMS.doc(id).delete(); await logActivity('deleted','Budget line item', i.vendor+' — '+i.category); await touchLastUpdated(); closeDrawer(); }
+        catch(err){ alert("Couldn't delete — check your connection.\n\n"+err.message); }
+      }
+    });
+  }
+  openDrawer();
+}
+function openBudgetItemForm(id){
+  const i = id ? budgetItems.find(x=>x.id===id) : null;
+  document.getElementById('drawerTitle').textContent = id ? 'Edit line item' : 'Add line item';
+  document.getElementById('drawerBody').innerHTML = `
+    <form id="genForm">
+      <div class="row2">
+        <div class="field"><label>Vendor</label><input type="text" id="f_vendor" required></div>
+        <div class="field"><label>Category</label>
+          <select id="f_cat">${budgetCats.map(c=>`<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join('')}</select>
+        </div>
+      </div>
+      <div class="field"><label>Description</label><input type="text" id="f_desc"></div>
+      <div class="row2">
+        <div class="field"><label>Unit cost (AED)</label><input type="number" id="f_unit" min="0" step="any">${currencyConverterHTML('fxConvUnit')}</div>
+        <div class="field"><label>Qty / headcount</label><input type="number" id="f_qty" min="0"></div>
+      </div>
+      <div class="field"><label>Cost type</label>
+        <select id="f_costtype"><option>Shared</option><option>Per-Employee</option></select>
+      </div>
+      <div class="field"><label>Notes</label><textarea id="f_notes"></textarea></div>
+      ${i && i.editedBy ? `<div style="font-size:11.5px;color:var(--slate);margin-bottom:10px;">Last edited by ${escapeHtml(i.editedBy)}${i.editedAt ? ` · ${fmtDateTime(i.editedAt)}` : ''}</div>` : ''}
+      <div class="drawer-actions">
+        <button type="button" class="btn ghost" id="cancelForm">Cancel</button>
+        <button type="submit" class="btn primary">Save</button>
+      </div>
+    </form>`;
+  if(i){
+    document.getElementById('f_vendor').value = i.vendor||'';
+    document.getElementById('f_cat').value = i.category||'';
+    document.getElementById('f_desc').value = i.description||'';
+    document.getElementById('f_unit').value = i.unitCost||0;
+    document.getElementById('f_qty').value = i.qty||0;
+    document.getElementById('f_costtype').value = i.costType||'Shared';
+    document.getElementById('f_notes').value = i.notes||'';
+  }
+  wireCurrencyConverter('fxConvUnit', 'f_unit');
+  document.getElementById('cancelForm').addEventListener('click', ()=>{ if(id) openBudgetItemView(id); else closeDrawer(); });
+  document.getElementById('genForm').addEventListener('submit', async e=>{
+    e.preventDefault();
+    const data = {
+      vendor: document.getElementById('f_vendor').value.trim(),
+      category: document.getElementById('f_cat').value,
+      description: document.getElementById('f_desc').value.trim(),
+      unitCost: parseFloat(document.getElementById('f_unit').value)||0,
+      qty: parseFloat(document.getElementById('f_qty').value)||0,
+      costType: document.getElementById('f_costtype').value,
+      notes: document.getElementById('f_notes').value.trim(),
+      editedBy: editorName || 'Unknown',
+      editedAt: new Date().toISOString(),
+    };
+    if(!data.vendor) return;
+    const docId = id || uid('bi');
+    try{ await BUDGET_ITEMS.doc(docId).set({id:docId, ...data}); await logActivity(id?'updated':'created','Budget line item', data.vendor+' — '+data.category); await touchLastUpdated(); closeDrawer(); }
+    catch(err){ alert("Couldn't save — check your connection.\n\n"+err.message); }
+  });
+  openDrawer();
+}
+
+function openBudgetPaymentView(id){
+  const p = budgetPayments.find(x=>x.id===id);
+  if(!p) return;
+  document.getElementById('drawerTitle').textContent = p.vendor;
+  document.getElementById('drawerBody').innerHTML = `
+    <div class="view-item"><div class="k">Category</div><div class="v">${escapeHtml(p.category)}</div></div>
+    <div class="view-item"><div class="k">Deposit</div><div class="v">${fmtMoney(p.deposit)}</div></div>
+    <div class="view-item"><div class="k">Deposit due</div><div class="v">${escapeHtml(p.depositDue) || '—'}</div></div>
+    <div class="view-item"><div class="k">Balance due</div><div class="v">${p.balanceDue?fmtMoney(p.balanceDue):'—'}</div></div>
+    <div class="view-item"><div class="k">Balance due date</div><div class="v">${escapeHtml(p.balanceDueDate) || '—'}</div></div>
+    <div class="view-item"><div class="k">Status</div><div class="v">${escapeHtml(p.status) || '—'}</div></div>
+    ${p.editedBy ? `<div class="view-item"><div class="k">Last edited</div><div class="v" style="color:var(--slate);font-size:12px;">${escapeHtml(p.editedBy)}${p.editedAt ? ` · ${fmtDateTime(p.editedAt)}` : ''}</div></div>` : ''}
+    ${editMode ? `<div class="drawer-actions">
+      <button class="btn ghost" id="editThis">Edit</button>
+      <button class="btn ghost" id="deleteThis" style="color:var(--rust);">Delete</button>
+    </div>` : ''}
+  `;
+  if(editMode){
+    document.getElementById('editThis').addEventListener('click', ()=>openBudgetPaymentForm(id));
+    document.getElementById('deleteThis').addEventListener('click', async ()=>{
+      if(confirm(`Delete this payment record for ${p.vendor}?`)){
+        try{ await BUDGET_PAYMENTS.doc(id).delete(); await logActivity('deleted','Budget payment', p.vendor); await touchLastUpdated(); closeDrawer(); }
+        catch(err){ alert("Couldn't delete — check your connection.\n\n"+err.message); }
+      }
+    });
+  }
+  openDrawer();
+}
+function openBudgetPaymentForm(id){
+  const p = id ? budgetPayments.find(x=>x.id===id) : null;
+  document.getElementById('drawerTitle').textContent = id ? 'Edit payment' : 'Add payment';
+  document.getElementById('drawerBody').innerHTML = `
+    <form id="genForm">
+      <div class="row2">
+        <div class="field"><label>Vendor</label><input type="text" id="f_vendor" required></div>
+        <div class="field"><label>Category</label>
+          <select id="f_cat">${budgetCats.map(c=>`<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join('')}</select>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Deposit (AED)</label><input type="number" id="f_dep" min="0" step="any">${currencyConverterHTML('fxConvDep')}</div>
+        <div class="field"><label>Deposit due</label><input type="text" id="f_depdue" placeholder="YYYY-MM-DD"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Balance due (AED)</label><input type="number" id="f_bal" min="0" step="any">${currencyConverterHTML('fxConvBal')}</div>
+        <div class="field"><label>Balance due date</label><input type="text" id="f_baldate" placeholder="YYYY-MM-DD"></div>
+      </div>
+      <div class="field"><label>Status</label><input type="text" id="f_status" placeholder="e.g. Paid, Pending"></div>
+      ${p && p.editedBy ? `<div style="font-size:11.5px;color:var(--slate);margin-bottom:10px;">Last edited by ${escapeHtml(p.editedBy)}${p.editedAt ? ` · ${fmtDateTime(p.editedAt)}` : ''}</div>` : ''}
+      <div class="drawer-actions">
+        <button type="button" class="btn ghost" id="cancelForm">Cancel</button>
+        <button type="submit" class="btn primary">Save</button>
+      </div>
+    </form>`;
+  if(p){
+    document.getElementById('f_vendor').value = p.vendor||'';
+    document.getElementById('f_cat').value = p.category||'';
+    document.getElementById('f_dep').value = p.deposit||0;
+    document.getElementById('f_depdue').value = p.depositDue||'';
+    document.getElementById('f_bal').value = p.balanceDue||0;
+    document.getElementById('f_baldate').value = p.balanceDueDate||'';
+    document.getElementById('f_status').value = p.status||'';
+  }
+  wireCurrencyConverter('fxConvDep', 'f_dep');
+  wireCurrencyConverter('fxConvBal', 'f_bal');
+  document.getElementById('cancelForm').addEventListener('click', ()=>{ if(id) openBudgetPaymentView(id); else closeDrawer(); });
+  document.getElementById('genForm').addEventListener('submit', async e=>{
+    e.preventDefault();
+    const data = {
+      vendor: document.getElementById('f_vendor').value.trim(),
+      category: document.getElementById('f_cat').value,
+      deposit: parseFloat(document.getElementById('f_dep').value)||0,
+      depositDue: document.getElementById('f_depdue').value.trim(),
+      balanceDue: parseFloat(document.getElementById('f_bal').value)||0,
+      balanceDueDate: document.getElementById('f_baldate').value.trim(),
+      status: document.getElementById('f_status').value.trim(),
+      editedBy: editorName || 'Unknown',
+      editedAt: new Date().toISOString(),
+    };
+    if(!data.vendor) return;
+    const docId = id || uid('bp');
+    try{ await BUDGET_PAYMENTS.doc(docId).set({id:docId, ...data}); await logActivity(id?'updated':'created','Budget payment', data.vendor); await touchLastUpdated(); closeDrawer(); }
+    catch(err){ alert("Couldn't save — check your connection.\n\n"+err.message); }
+  });
+  openDrawer();
+}
+
+/* ---------- generic view + delete for visa/flight/hotel/program ---------- */
+const COLLECTIONS = { visa: VISAS, flight: FLIGHTS, hotel: HOTELS, program: PROGRAM };
+const FORM_OPENERS = { visa: openVisaForm, flight: openFlightForm, hotel: openHotelForm, program: openProgramForm };
+const DATA_LISTS = { visa: ()=>visas, flight: ()=>flights, hotel: ()=>hotels, program: ()=>program };
+const TITLE_FIELDS = { visa: 'name', flight: 'name', hotel: 'guest', program: 'activity' };
+
+function openGenericView(kind, id){
+  const list = DATA_LISTS[kind]();
+  const item = list.find(x=>x.id===id);
+  if(!item) return;
+  document.getElementById('drawerTitle').textContent = item[TITLE_FIELDS[kind]] || 'Detail';
+  const rows = Object.entries(item).filter(([k])=>k!=='id').map(([k,v])=>{
+    const label = k.replace(/([A-Z])/g,' $1').replace(/^./,c=>c.toUpperCase());
+    const display = k === 'editedAt' ? (fmtDateTime(v) || '—') : (escapeHtml(String(v)) || '—');
+    return `<div class="view-item"><div class="k">${label}</div><div class="v">${display}</div></div>`;
+  }).join('');
+  document.getElementById('drawerBody').innerHTML = rows + (editMode ? `<div class="drawer-actions">
+      <button class="btn ghost" id="editThis">Edit</button>
+      <button class="btn ghost" id="deleteThis" style="color:var(--rust);">Delete</button>
+    </div>` : '');
+  if(editMode){
+    document.getElementById('editThis').addEventListener('click', ()=>FORM_OPENERS[kind](id));
+    document.getElementById('deleteThis').addEventListener('click', async ()=>{
+      if(confirm(`Delete this entry?`)){
+        try{ await COLLECTIONS[kind].doc(id).delete(); await logActivity('deleted', kind.charAt(0).toUpperCase()+kind.slice(1), item[TITLE_FIELDS[kind]]); await touchLastUpdated(); closeDrawer(); }
+        catch(err){ alert("Couldn't delete — check your connection.\n\n"+err.message); }
+      }
+    });
+  }
+  openDrawer();
+}
+
+/* ---------- drawer + mode toggle ---------- */
+function openDrawer(){ document.getElementById('scrim').classList.add('open'); document.getElementById('drawer').classList.add('open'); }
+function closeDrawer(){ document.getElementById('scrim').classList.remove('open'); document.getElementById('drawer').classList.remove('open'); }
+document.getElementById('closeDrawer').addEventListener('click', closeDrawer);
+document.getElementById('scrim').addEventListener('click', closeDrawer);
+
+document.getElementById('addTaskBtn').addEventListener('click', ()=>openTaskForm(null));
+document.getElementById('addVisaBtn').addEventListener('click', ()=>openVisaForm(null));
+document.getElementById('addFlightBtn').addEventListener('click', ()=>openFlightForm(null));
+document.getElementById('addHotelBtn').addEventListener('click', ()=>openHotelForm(null));
+document.getElementById('addProgramBtn').addEventListener('click', ()=>openProgramForm(null));
+document.getElementById('addTravelerBtn').addEventListener('click', ()=>openAddTravelerForm());
+document.getElementById('editAssumptionsBtn').addEventListener('click', ()=>{ if(meta) openAssumptionsForm(); });
+document.querySelectorAll('#currencyChips .chip').forEach(chip=>{
+  chip.addEventListener('click', ()=>{
+    displayCurrency = chip.getAttribute('data-cur');
+    localStorage.setItem('s10_display_currency', displayCurrency);
+    renderBudget();
+  });
+});
+document.getElementById('editFxBtn').addEventListener('click', ()=>{ if(meta) openFxRatesForm(); });
+document.getElementById('printBtn').addEventListener('click', ()=> window.print());
+document.getElementById('addBudgetItemBtn').addEventListener('click', ()=>openBudgetItemForm(null));
+document.getElementById('addBudgetPaymentBtn').addEventListener('click', ()=>openBudgetPaymentForm(null));
+
+document.querySelectorAll('#taskFilters .chip').forEach(chip=>{
+  chip.addEventListener('click', ()=>{
+    document.querySelectorAll('#taskFilters .chip').forEach(c=>c.classList.remove('active'));
+    chip.classList.add('active');
+    taskFilter = chip.getAttribute('data-filter');
+    renderTasks();
+  });
+});
+
+function promptEditorName(onConfirmed){
+  document.getElementById('drawerTitle').textContent = "Who's editing?";
+  document.getElementById('drawerBody').innerHTML = `
+    <form id="identityForm">
+      <div class="field"><label>Name</label>
+        <select id="id_name">
+          <option value="Rose">Rose</option>
+          <option value="Arlene">Arlene</option>
+          <option value="Ann">Ann</option>
+          <option value="Sheila">Sheila</option>
+          <option value="Noushad">Noushad</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>PIN</label>
+        <input type="password" id="id_pin" inputmode="numeric" maxlength="4" placeholder="4-digit PIN">
+      </div>
+      <div class="drawer-actions">
+        <button type="submit" class="btn primary">Confirm</button>
+      </div>
+    </form>
+  `;
+  const select = document.getElementById('id_name');
+  document.getElementById('identityForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = select.value;
+    const pin = document.getElementById('id_pin').value.trim();
+    if(pin !== EDITOR_PINS[name]){
+      alert("That PIN doesn't match. Ask the person for their correct PIN.");
+      return;
+    }
+    editorName = name;
+    localStorage.setItem('s10_editor_name', editorName);
+    renderEditorLine();
+    closeDrawer();
+    if(onConfirmed) onConfirmed();
+  });
+  openDrawer();
+}
+function renderEditorLine(){
+  const el = document.getElementById('editorLine');
+  if(!el) return;
+  el.innerHTML = editorName
+    ? `Editing as <strong>${escapeHtml(editorName)}</strong> · <a href="#" id="changeEditorLink" style="color:var(--gold);">change</a>`
+    : `<a href="#" id="changeEditorLink" style="color:var(--gold);">Set your name</a>`;
+  const link = document.getElementById('changeEditorLink');
+  if(link) link.addEventListener('click', (e) => { e.preventDefault(); promptEditorName(); });
+}
+
+function applyEditModeUI(){
+  document.body.classList.toggle('view-only', !editMode);
+  const toggle = document.getElementById('modeToggle');
+  toggle.classList.toggle('on', editMode);
+  document.getElementById('modeLabel').textContent = editMode ? 'Edit mode' : 'View mode';
+  renderEditorLine();
+}
+document.getElementById('modeToggle').addEventListener('click', ()=>{
+  function activateEditMode(){
+    editMode = true;
+    localStorage.setItem('s10_edit_mode', 'true');
+    applyEditModeUI();
+  }
+  if(!editMode){
+    if(!editorName){
+      promptEditorName(activateEditMode);
+    } else {
+      activateEditMode();
+    }
+  } else {
+    editMode = false;
+    localStorage.setItem('s10_edit_mode', 'false');
+    applyEditModeUI();
+  }
+});
+applyEditModeUI();
+
+startListeners();
+</script>
+</body>
+</html>
